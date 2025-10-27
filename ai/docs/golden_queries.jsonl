@@ -1,0 +1,20 @@
+{"id":"gq_001","query":"Where is the FastAPI app initialized?","expect_contains":["ai/app/main.py","FastAPI("],"notes":"Cross-file code location with symbol mention."}
+{"id":"gq_002","query":"List all API routers and their prefixes.","expect_contains":["/ingest","/kb","/delete","/agent"],"notes":"Should traverse import usage and include router registration."}
+{"id":"gq_003","query":"What is the health check endpoint path?","expect_contains":["/healthz"],"notes":"Simple route check."}
+{"id":"gq_004","query":"Where are Prisma migrations stored?","expect_contains":["graph-rag/prisma/migrations"],"notes":"Docs/config question spanning folders."}
+{"id":"gq_005","query":"Which file loads environment variables for the AI service?","expect_contains":["ai/app/main.py","load_dotenv"],"notes":"Cross-doc/code reference."}
+{"id":"gq_006","query":"Which folders are blacklisted from ingest?","expect_contains":["node_modules",".venv"],"notes":"Expect to map to inventory script excludes."}
+{"id":"gq_007","query":"Show the docker-compose files present and their paths.","expect_contains":["ai/docker-compose.yml","graph-rag/docker-compose.yml"],"notes":"Repo-wide file discovery."}
+{"id":"gq_008","query":"What ports does the Next.js app use?","expect_contains":["next.config.ts"],"notes":"May require parsing config or defaults."}
+{"id":"gq_009","query":"Which services manage embeddings and vectors?","expect_contains":["ai/app/services/vectors.py"],"notes":"Code responsibility mapping."}
+{"id":"gq_010","query":"Where are file ingestion endpoints defined?","expect_contains":["ai/app/router/ingest.py"],"notes":"Router endpoint discovery."}
+{"id":"gq_011","query":"Find the README files.","expect_contains":["ai/README.md","graph-rag/README.md"],"notes":"Docs presence."}
+{"id":"gq_012","query":"Which file defines authentication utilities?","expect_contains":["ai/app/util/auth.py"],"notes":"Utilities discovery."}
+{"id":"gq_013","query":"List public assets used by Next.js.","expect_contains":["graph-rag/public/"],"notes":"Public assets folder."}
+{"id":"gq_014","query":"Where is the test script for Gemini?","expect_contains":["ai/scripts/test_gemini.py"],"notes":"Script location."}
+{"id":"gq_015","query":"What are the main top-level folders in the repo?","expect_contains":["ai","graph-rag"],"notes":"Structure awareness."}
+{"id":"gq_016","query":"Which file sets up Prisma client in Next.js?","expect_contains":["graph-rag/src/lib/prisma.ts"],"notes":"Library config lookup."}
+{"id":"gq_017","query":"Where are the chat UI components?","expect_contains":["graph-rag/src/components/ChatClient.tsx"],"notes":"Frontend components."}
+{"id":"gq_018","query":"Which files define the agent controllers and tools?","expect_contains":["ai/app/controllers/agent_controller.py","ai/app/agents/tools.py"],"notes":"Agent pieces."}
+{"id":"gq_019","query":"Where are graph operations implemented?","expect_contains":["ai/app/services/graph.py"],"notes":"Graph service code."}
+{"id":"gq_020","query":"Which file extracts content from PDFs?","expect_contains":["ai/app/services/pdf_extract.py"],"notes":"Extractor utility."}
