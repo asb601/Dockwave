@@ -122,10 +122,8 @@ export default function FolderClient({
 
   // Card grid like on Home page
   return (
-    <div className="min-h-screen bg-gray-950 text-white relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/20 via-gray-800/10 to-gray-950" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.06),transparent_70%)]" />
+    <div className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)]">
+      {/* Removed gradient overlays to use global theme */}
 
       <AppTopBar user={user} onNewUploadFile={() => setShowUploadPanel(true)} />
 
@@ -137,43 +135,43 @@ export default function FolderClient({
         onDrop={handleDrop}
       >
         {/* Breadcrumb */}
-        <nav className="mb-6 text-sm text-gray-400">
-          <Link href="/home" className="hover:text-white">Home</Link>
+        <nav className="mb-6 text-sm text-[color:var(--muted-foreground)]">
+          <Link href="/home" className="hover:text-[color:var(--foreground)]">Home</Link>
           {parent && (
             <>
               <span className="mx-2">/</span>
-              <Link href={`/folders/${parent.id}`} className="hover:text-white">{parent.name}</Link>
+              <Link href={`/folders/${parent.id}`} className="hover:text-[color:var(--foreground)]">{parent.name}</Link>
             </>
           )}
           <span className="mx-2">/</span>
-          <span className="text-white font-medium">{folderName}</span>
+          <span className="font-medium text-[color:var(--foreground)]">{folderName}</span>
         </nav>
 
         {/* Files list (no outer container) */}
         {loading ? (
           <div className="space-y-2">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-12 rounded-lg bg-gray-900 border border-gray-800 animate-pulse" />
+              <div key={i} className="h-12 rounded-lg bg-[color:var(--secondary)] border border-[color:var(--border)] animate-pulse" />
             ))}
           </div>
         ) : files.length === 0 ? (
-          <div className="text-sm text-gray-400">No files in this folder.</div>
+          <div className="text-sm text-[color:var(--muted-foreground)]">No files in this folder.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {files.map((file) => (
               <div key={file.id} className="group relative">
                 {/* Card */}
                 <div
-                  className="block p-4 bg-gray-900/60 hover:bg-gray-900 rounded-xl border border-gray-800 hover:border-gray-700 transition-all duration-200 cursor-pointer backdrop-blur"
+                  className="block p-4 bg-[color:var(--card)] hover:bg-[color:var(--secondary)] rounded-xl border border-[color:var(--border)] transition-all duration-200 cursor-pointer"
                   onClick={() => openFileInBrowser(file.id)}
                 >
                   {/* File Icon + Name */}
                   <div className="flex flex-col items-center text-center">
-                    <div className="w-12 h-12 bg-gray-800 rounded-lg grid place-items-center mb-3 group-hover:scale-105 transition-transform">
-                      <FileIcon className="w-6 h-6 text-gray-200" />
+                    <div className="w-12 h-12 bg-[color:var(--secondary)] rounded-lg grid place-items-center mb-3 group-hover:scale-105 transition-transform">
+                      <FileIcon className="w-6 h-6 text-[color:var(--foreground)]" />
                     </div>
-                    <span className="text-sm font-medium truncate w-full text-white">{file.name}</span>
-                    <span className="text-xs text-gray-400 mt-1">{new Date(file.createdAt).toLocaleDateString()}</span>
+                    <span className="text-sm font-medium truncate w-full text-[color:var(--foreground)]">{file.name}</span>
+                    <span className="text-xs text-[color:var(--muted-foreground)] mt-1">{new Date(file.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
 
@@ -185,9 +183,9 @@ export default function FolderClient({
                       openFileInBrowser(file.id);
                     }}
                     title="Open"
-                    className="p-1.5 bg-gray-800/90 hover:bg-gray-700 rounded-lg transition-colors"
+                    className="p-1.5 bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg transition-colors"
                   >
-                    <EyeIcon className="w-4 h-4 text-gray-200" />
+                    <EyeIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={(e) => {
@@ -195,9 +193,9 @@ export default function FolderClient({
                       handleDeleteFile(file.id);
                     }}
                     title="Delete"
-                    className="p-1.5 bg-gray-800/90 hover:bg-red-700 rounded-lg transition-colors"
+                    className="p-1.5 bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg transition-colors"
                   >
-                    <TrashIcon className="w-4 h-4 text-gray-200" />
+                    <TrashIcon className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -211,7 +209,7 @@ export default function FolderClient({
         <div className="fixed inset-0 z-40 pointer-events-none">
           <div className="absolute inset-0 bg-black/40" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="rounded-2xl border-2 border-dashed border-gray-400/70 bg-gray-900/60 px-8 py-6 text-center text-gray-100 backdrop-blur">
+            <div className="rounded-2xl border-2 border-dashed border-[color:var(--border)] bg-[color:var(--secondary)] px-8 py-6 text-center text-[color:var(--foreground)]">
               <div className="text-sm">{uploading ? "Uploading..." : "Drop files to upload to this folder"}</div>
             </div>
           </div>
@@ -221,11 +219,11 @@ export default function FolderClient({
       {/* Upload Modal, opened via AppTopBar */}
       {showUploadPanel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowUploadPanel(false)} />
-          <div className="relative z-10 w-full max-w-lg bg-gray-900/80 border border-gray-800 rounded-2xl p-6 backdrop-blur">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowUploadPanel(false)} />
+          <div className="relative z-10 w-full max-w-lg bg-[color:var(--card)] border border-[color:var(--border)] rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Upload Files</h3>
-              <button onClick={() => setShowUploadPanel(false)} className="p-2 hover:bg-gray-900 rounded-lg transition-colors" aria-label="Close">×</button>
+              <button onClick={() => setShowUploadPanel(false)} className="p-2 hover:bg-[color:var(--secondary)] rounded-lg transition-colors" aria-label="Close">×</button>
             </div>
             <UploadSection
               folders={folders}

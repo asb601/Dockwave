@@ -33,28 +33,28 @@ export default function FolderFiles({ files }: { files: FileItem[] }) {
   }
 
   if (!files || files.length === 0) {
-    return <div className="text-muted-foreground">No files in this folder.</div>;
+    return <div className="text-[color:var(--muted-foreground)]">No files in this folder.</div>;
   }
 
   return (
     <ul className="space-y-2">
       {files.map((file) => (
-        <li key={file.id} className="flex justify-between items-center p-3 border border-border rounded-lg bg-card">
-          <span className="truncate">{file.name}</span>
+        <li key={file.id} className="flex justify-between items-center p-3 border border-[color:var(--border)] rounded-lg bg-[color:var(--card)]">
+          <span className="truncate text-[color:var(--foreground)]">{file.name}</span>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-[color:var(--muted-foreground)]">
               {new Date(file.createdAt).toLocaleString()}
             </span>
             <button
               onClick={() => openFile(file.id)}
-              className="text-primary underline text-sm"
+              className="text-sm px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--card)] hover:bg-[color:var(--accent)]"
               title="Open"
             >
               Open
             </button>
             <button
               onClick={() => handleDeleteFile(file.id)}
-              className="text-red-400 hover:text-red-300 text-sm"
+              className="text-sm px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--card)] hover:bg-[color:var(--accent)] text-[color:var(--destructive)]"
               title="Delete"
             >
               Delete

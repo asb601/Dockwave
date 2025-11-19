@@ -1,73 +1,40 @@
-#!/usr/bin/env python3
+
+import dotenv
+
+dotenv.load_dotenv()
+
 import os
-import sys
-from dotenv import load_dotenv
+from openai import AzureOpenAI
 
-load_dotenv()
+endpoint = "https://chatg-mhuoizf5-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2025-01-01-preview"
+model_name = os.getenv("AZURE_OPENAI_MODEL", "gpt-4o-mini")
+deployment = "gpt-4o-mini"
 
-try:
-    import google.generativeai as genai
-except Exception as e:
-    print("google-generativeai is not installed. Add it to requirements and install.")
-    sys.exit(1)
+subscription_key = os.getenv("AZURE_OPENAI_API_KEY")
+api_version = "2024-12-01-preview"
 
+client = AzureOpenAI(
+    api_version=api_version,
+    azure_endpoint=endpoint,
+    api_key=subscription_key,
+)
 
-def _mask(key: str) -> str:
-    if not key:
-        return "<missing>"
-    if len(key) <= 8:
-        return "*" * len(key)
-    return key[:4] + "*" * (len(key) - 8) + key[-4:]
+response = client.chat.completions.create(
+    messages=[
+        {
+            "role": "system",
+            "content": "You are a helpful assistant.",
+        },
+        {
+            "role": "user",
+            "content": "I am going to Paris, what should I see?",
+        }
+    ],
+    max_tokens=4096,
+    temperature=1.0,
+    top_p=1.0,
+    model=deployment
+)
 
+print(response.choices[0].message.content)
 
-def main():
-    api_key = os.getenv("GEMINI_API_KEY")
-    model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-
-    if not api_key:
-        print("GEMINI_API_KEY is not set in environment or .env")
-        sys.exit(1)
-
-    print(f"Using model: {model_name}")
-    print(f"API key: {_mask(api_key)}")
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(model_name)
-
-    system_rules = (
-        "You are a helpful assistant. Answer succinctly and clearly. "
-        "If the question asks for a number, provide the number and units in a readable format."
-    )
-    question = (
-        "how much is ur context tokens i how many tokens can be sent in 1 message give me the number in readable format"
-    )
-
-    prompt = (
-        f"SYSTEM\n{system_rules}\n\n"
-        f"QUESTION\n{question}\n\n"
-        f"ANSWER"
-    )
-
-    try:
-        resp = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.1,
-                "max_output_tokens": 256,
-            },
-        )
-    except Exception as e:
-        print("Gemini API call failed:\n", e)
-        sys.exit(2)
-
-    text = getattr(resp, "text", None)
-    if not text:
-        print("No text returned from Gemini.")
-        sys.exit(3)
-
-    print("\nGemini response:\n")
-    print(text)
-
-
-if __name__ == "__main__":
-    main()

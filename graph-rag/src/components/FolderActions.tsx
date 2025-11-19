@@ -49,12 +49,17 @@ export default function FolderActions({ folderId }: { folderId: string }) {
   }
 
   return (
-    <aside className="space-y-8">
-      <div className="bg-card border border-border rounded-lg p-6">
+    <aside className="space-y-6">
+      <div className="bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-3">Add file here</h3>
-        <input ref={fileRef} type="file" className="block w-full text-foreground" onChange={uploadToThisFolder} />
+        <input
+          ref={fileRef}
+          type="file"
+          className="block w-full text-sm text-[color:var(--foreground)] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border file:border-[color:var(--border)] file:text-sm file:font-medium file:bg-[color:var(--card)] file:text-[color:var(--foreground)] hover:file:bg-[color:var(--accent)]"
+          onChange={uploadToThisFolder}
+        />
       </div>
-      <div className="bg-card border border-border rounded-lg p-6">
+      <div className="bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-3">Create subfolder</h3>
         <div className="flex gap-3">
           <input
@@ -62,9 +67,13 @@ export default function FolderActions({ folderId }: { folderId: string }) {
             placeholder="Subfolder name"
             value={subfolderName}
             onChange={(e) => setSubfolderName(e.target.value)}
-            className="flex-1 border border-border rounded px-3 py-2 bg-background"
+            className="flex-1 border border-[color:var(--border)] rounded-md px-3 py-2 bg-[color:var(--background)] text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--ring)]"
           />
-          <Button onClick={createSubfolder} disabled={creating}>
+          <Button
+            onClick={createSubfolder}
+            disabled={creating}
+            className="bg-[color:var(--primary)] text-[color:var(--primary-foreground)] hover:opacity-90"
+          >
             {creating ? "Creating..." : "Create"}
           </Button>
         </div>

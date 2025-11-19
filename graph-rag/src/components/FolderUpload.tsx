@@ -37,18 +37,18 @@ export default function FolderUpload({ folderId }: { folderId: string }) {
   return (
     <div className="space-y-4">
       <div>
-        <label className="mb-2 block text-sm font-medium text-neutral-200">Add file</label>
+        <label className="mb-2 block text-sm font-medium">Add file</label>
         <input
           type="file"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="block w-full text-sm text-neutral-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-neutral-800 file:text-neutral-100 hover:file:bg-neutral-700"
+          className="block w-full text-sm text-[color:var(--foreground)] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border file:border-[color:var(--border)] file:text-sm file:font-medium file:bg-[color:var(--card)] file:text-[color:var(--foreground)] hover:file:bg-[color:var(--accent)]"
         />
-        <p className="mt-2 text-xs text-neutral-500">Max 10MB. PDF, TXT, DOCX supported.</p>
+        <p className="mt-2 text-xs text-[color:var(--muted-foreground)]">Max 10MB. PDF, TXT, DOCX supported.</p>
       </div>
       <button
         onClick={handleUpload}
         disabled={!file || uploading}
-        className="inline-flex w-full items-center justify-center rounded-lg bg-neutral-800 px-4 py-2 text-sm font-medium text-white border border-neutral-700 transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center rounded-lg bg-[color:var(--primary)] px-4 py-2 text-sm font-medium text-[color:var(--primary-foreground)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {uploading ? "Uploading…" : "Upload to this folder"}
       </button>

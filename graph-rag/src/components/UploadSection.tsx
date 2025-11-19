@@ -48,16 +48,15 @@ export default function UploadSection({ folders, files, loading, onFileUploaded,
 
   return (
     <div className="space-y-6">
-      {/* Add file */}
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-        <h2 className="text-sm font-semibold text-neutral-100 mb-4">Add file</h2>
+      <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4">
+        <h2 className="text-sm font-semibold mb-4">Add file</h2>
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <label className="text-neutral-400 text-sm">Destination</label>
+            <label className="text-sm text-[color:var(--muted-foreground)]">Destination</label>
             <select
               value={destFolderId}
               onChange={(e) => setDestFolderId(e.target.value)}
-              className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:ring-2 focus:ring-neutral-700 focus:border-neutral-700"
+              className="rounded-md border border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--ring)]"
             >
               <option value="">Root</option>
               {folders.map((f) => (
@@ -69,24 +68,22 @@ export default function UploadSection({ folders, files, loading, onFileUploaded,
           <input
             ref={fileInputRef}
             type="file"
-            className="block w-full text-sm text-neutral-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-neutral-800 file:text-neutral-100 hover:file:bg-neutral-700"
+            className="block w-full text-sm text-[color:var(--foreground)] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border file:border-[color:var(--border)] file:text-sm file:font-medium file:bg-[color:var(--card)] file:text-[color:var(--foreground)] hover:file:bg-[color:var(--accent)]"
             onChange={handleFileUpload}
           />
-          <p className="text-xs text-neutral-500">Max 10MB. PDF, TXT, DOCX supported.</p>
+          <p className="text-xs text-[color:var(--muted-foreground)]">Max 10MB. PDF, TXT, DOCX supported.</p>
         </div>
       </div>
-
-      {/* Your files */}
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-        <h3 className="text-sm font-semibold text-neutral-100 mb-4">Your files</h3>
+      <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4">
+        <h3 className="text-sm font-semibold mb-4">Your files</h3>
         {loading ? (
           <div className="space-y-2">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-10 rounded-lg bg-neutral-900 border border-neutral-800 animate-pulse" />
+              <div key={i} className="h-10 rounded-md bg-[color:var(--secondary)] border border-[color:var(--border)] animate-pulse" />
             ))}
           </div>
         ) : files.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-neutral-800 bg-neutral-900 p-6 text-center text-sm text-neutral-400">
+          <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--background)] p-6 text-center text-sm text-[color:var(--muted-foreground)]">
             No files uploaded yet.
           </div>
         ) : (
@@ -94,10 +91,10 @@ export default function UploadSection({ folders, files, loading, onFileUploaded,
             {files.map((file) => (
               <li
                 key={file.id}
-                className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2"
+                className="flex items-center justify-between rounded-md border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-2"
               >
-                <span className="truncate text-neutral-200 text-sm">{file.name}</span>
-                <span className="text-xs text-neutral-500">{new Date(file.createdAt).toLocaleString()}</span>
+                <span className="truncate text-sm">{file.name}</span>
+                <span className="text-xs text-[color:var(--muted-foreground)]">{new Date(file.createdAt).toLocaleString()}</span>
               </li>
             ))}
           </ul>

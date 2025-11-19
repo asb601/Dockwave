@@ -7,7 +7,7 @@ import os
 from app.agents.brain import BrainAgent
 from app.agents.tools import GraphSearchTool, VectorSearchTool, LLMTool, SummarizeTool
 
-router = APIRouter(prefix="/agent", tags=["agent"])
+router = APIRouter()
 
 
 class RunAgentRequest(BaseModel):
