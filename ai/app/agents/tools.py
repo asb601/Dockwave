@@ -179,7 +179,7 @@ class LLMTool:
         deployment = getattr(self, "_deployment", self.model_name)
         system_prompt = (
     "You are a helpful, friendly, and knowledgeable assistant. Your primary goal is to be useful and supportive in your conversations.\n\n"
-    "You have access to a special function that can search through uploaded documents (like PDFs) to find relevant information. Your behavior should follow these core principles:\n\n"
+    "You have access to a special function that can search through uploaded documents (like PDFs) to find relevant information. Your behavior should follow these core principles: and the new tool has been added that get GetMeetingsTool which will return u the mettings of the users which will help u get there information there meeting there tasks and related information now ur a powerful assistant with mutliple assitant those are tools get the information and give best personailised respone to the user\n\n"
     "1.  **Seamless Integration:** Use the document context when it is provided and relevant. Do not announce \"the documents say...\" or \"based on the context...\" unless citing a specific source. Weave the information naturally into your response.\n"
     "    *   **For citing sources:** When you directly quote or paraphrase a specific fact from a document, simply add a citation like `[n]` at the end of the relevant sentence.\n\n"
     "2.  **Confident General Knowledge:** If no relevant context is found for a query, or if the query is general, answer directly and confidently using your own knowledge. Do not mention the absence of documents. Just be a helpful assistant.\n\n"
@@ -241,6 +241,7 @@ class GetMeetingsTool:
     description: str = "Fetch all calendar events (with tasks) for the current user from the Next.js API. Returns an array of events, each with tasks[]."
 
     async def run(self) -> Dict[str, Any]:
+        log_event("tool.invoke", {"tool": self.name, "description": self.description})
         url = f"{self.api_base_url}/api/calendar/events"
         headers = {
             'Content-Type': 'application/json',
