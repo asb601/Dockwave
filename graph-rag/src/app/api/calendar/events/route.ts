@@ -4,8 +4,38 @@
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { Prisma, Priority } from '@prisma/client';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+
+type TaskInput = {
+  title: string;
+  description?: string;
+  dueDate?: string;
+  dueTime?: string;
+  priority?: string;
+  completed?: boolean;
+};
+
+type CreateEventBody = {
+  title: string;
+  description?: string;
+  start: string;
+  end?: string;
+  isAllDay?: boolean;
+  color?: string;
+  tasks?: TaskInput[];
+};
+
+type UpdateEventBody = {
+  id: string;
+  title?: string;
+  description?: string;
+  start?: string;
+  end?: string;
+  isAllDay?: boolean;
+  color?: string;
+};
 
 // GET /api/calendar/events?start=ISO&end=ISO
 export async function GET(req: Request) {
@@ -16,7 +46,7 @@ export async function GET(req: Request) {
   const end = searchParams.get('end');
   const userId = session.user.id as string;
 
-  const where: any = { userId, deleted: false };
+  const where: Prisma.CalendarEventWhereInput = { userId, deleted: false };
   if (start && end) {
     where.start = { gte: new Date(start), lte: new Date(end) };
   }
@@ -33,7 +63,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const body = await req.json();
+  const body = (await req.json()) as CreateEventBody;
   const userId = session.user.id as string;
 
   const { title, description, start, end, isAllDay, color, tasks } = body;
@@ -49,12 +79,12 @@ export async function POST(req: Request) {
       color: color || '#3b82f6',
       userId,
       tasks: tasks && Array.isArray(tasks) ? {
-        create: tasks.map((t: any) => ({
+        create: tasks.map((t: TaskInput) => ({
           title: t.title,
           description: t.description,
           dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
           dueTime: t.dueTime,
-          priority: t.priority ? t.priority.toUpperCase() : 'MEDIUM',
+          priority: (t.priority ? t.priority.toUpperCase() : 'MEDIUM') as Priority,
           completed: !!t.completed,
         }))
       } : undefined
@@ -67,7 +97,7 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const body = await req.json();
+  const body = (await req.json()) as UpdateEventBody;
   const userId = session.user.id as string;
   const { id, ...updates } = body;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
@@ -80,7 +110,7 @@ export async function PATCH(req: Request) {
     data: {
       ...('title' in updates ? { title: updates.title } : {}),
       ...('description' in updates ? { description: updates.description } : {}),
-      ...('start' in updates ? { start: new Date(updates.start) } : {}),
+      ...('start' in updates && updates.start ? { start: new Date(updates.start) } : {}),
       ...('end' in updates && updates.end ? { end: new Date(updates.end) } : {}),
       ...('isAllDay' in updates ? { isAllDay: !!updates.isAllDay } : {}),
       ...('color' in updates ? { color: updates.color } : {}),

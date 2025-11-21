@@ -4,10 +4,13 @@ import { useEffect, useState } from 'react';
 import UploadSection from '@/components/UploadSection';
 import { useRouter } from 'next/navigation';
 
+type FolderSummary = { id: string; name: string };
+type UserFile = { id: string; name: string; s3Key: string; createdAt: string; folderId?: string | null };
+
 export default function ClientFolderUpload({ defaultFolderId }: { defaultFolderId: string }) {
   const [open, setOpen] = useState(false);
-  const [folders, setFolders] = useState<Array<{ id: string; name: string }>>([]);
-  const [files, setFiles] = useState<Array<{ id: string; name: string; s3Key: string; createdAt: string; folderId?: string | null }>>([]);
+  const [folders, setFolders] = useState<FolderSummary[]>([]);
+  const [files, setFiles] = useState<UserFile[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -17,10 +20,10 @@ export default function ClientFolderUpload({ defaultFolderId }: { defaultFolderI
       setLoading(true);
       try {
         const res = await fetch('/api/user/files-folders');
-        const data = await res.json();
+        const data = (await res.json()) as { folders?: FolderSummary[]; files?: UserFile[] };
         if (!active) return;
         setFolders(data.folders || []);
-        setFiles((data.files || []).filter((f: any) => f.folderId === defaultFolderId));
+        setFiles((data.files || []).filter((file) => file.folderId === defaultFolderId));
       } finally {
         if (active) setLoading(false);
       }

@@ -3,6 +3,16 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
+type ApiErrorResponse = { error?: string };
+
+const parseErrorResponse = async (res: Response): Promise<ApiErrorResponse> => {
+  try {
+    return await res.json();
+  } catch {
+    return {};
+  }
+};
+
 export default function FolderActions({ folderId }: { folderId: string }) {
   const [subfolderName, setSubfolderName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -24,8 +34,8 @@ export default function FolderActions({ folderId }: { folderId: string }) {
       } else if (res.status === 409) {
         alert("A folder with this name already exists here.");
       } else {
-        const err = await res.json().catch(() => ({} as any));
-        alert(err?.error || "Failed to create folder");
+        const err = await parseErrorResponse(res);
+        alert(err.error || "Failed to create folder");
       }
     } finally {
       setCreating(false);
@@ -43,8 +53,8 @@ export default function FolderActions({ folderId }: { folderId: string }) {
       if (fileRef.current) fileRef.current.value = "";
       window.location.reload();
     } else {
-      const err = await res.json().catch(() => ({} as any));
-      alert(err?.error || "Upload failed");
+      const err = await parseErrorResponse(res);
+      alert(err.error || "Upload failed");
     }
   }
 

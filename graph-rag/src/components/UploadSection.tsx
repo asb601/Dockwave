@@ -41,7 +41,7 @@ export default function UploadSection({ folders, files, loading, onFileUploaded,
       onFileUploaded();
       if (fileInputRef.current) fileInputRef.current.value = '';
     } else {
-      const err = await res.json().catch(() => ({} as any));
+      const err = await res.json().catch(() => ({} as { error?: string }));
       alert(err?.error || 'File upload failed');
     }
   }

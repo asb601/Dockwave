@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Calendar, CheckSquare, ChevronLeft, ChevronRight, Plus, X, Clock, Flag, GripVertical } from 'lucide-react';
 
 // Types
@@ -27,10 +27,6 @@ type CalendarViewType = 'week' | 'month' | 'year';
 // Utility functions
 const formatDate = (date: Date) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-};
-
-const formatTime = (date: Date) => {
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 };
 
 const isSameDay = (d1: Date, d2: Date) => {
@@ -77,8 +73,56 @@ const getMonthDays = (date: Date) => {
   return days;
 };
 
+interface EventModalProps {
+  event: Partial<CalendarEvent> | null;
+  onClose: () => void;
+  onSave: (event: CalendarEvent) => void;
+  onDelete: (id: string) => void;
+}
+
+interface TaskModalProps {
+  task: Task | null;
+  onClose: () => void;
+  onSave: (task: Task) => void;
+  onDelete: (id: string) => void;
+}
+
+interface WeeklyViewProps {
+  currentDate: Date;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
+  onTimeSlotClick: (date: Date) => void;
+}
+
+interface MonthlyViewProps {
+  currentDate: Date;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
+  onDayClick: (date: Date) => void;
+}
+
+interface YearlyViewProps {
+  currentDate: Date;
+  events: CalendarEvent[];
+  onMonthClick: (date: Date) => void;
+}
+
+interface TasksViewProps {
+  tasks: Task[];
+  onTaskClick: (task: Task) => void;
+  onTaskToggle: (id: string) => void;
+  onAddTask: () => void;
+  selectedDate: Date;
+  onDateChange: (date: Date) => void;
+}
+
+type ModalState =
+  | { type: 'event'; data: Partial<CalendarEvent> | null }
+  | { type: 'task'; data: Task | null }
+  | { type: null; data: null };
+
 // Event Modal Component
-const EventModal = ({ event, onClose, onSave, onDelete }: any) => {
+const EventModal: React.FC<EventModalProps> = ({ event, onClose, onSave, onDelete }) => {
   const [formData, setFormData] = useState({
     title: event?.title || '',
     start: event?.start ? new Date(event.start).toISOString().slice(0, 16) : '',
@@ -89,13 +133,15 @@ const EventModal = ({ event, onClose, onSave, onDelete }: any) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      ...event,
-      ...formData,
+    const updatedEvent: CalendarEvent = {
+      id: event?.id || Date.now().toString(),
+      title: formData.title,
       start: new Date(formData.start),
       end: new Date(formData.end),
-      id: event?.id || Date.now().toString()
-    });
+      color: formData.color,
+      description: formData.description,
+    };
+    onSave(updatedEvent);
   };
 
   return (
@@ -162,10 +208,10 @@ const EventModal = ({ event, onClose, onSave, onDelete }: any) => {
             />
           </div>
           <div className="flex gap-2 justify-end">
-            {event && (
+            {event?.id && (
               <button
                 type="button"
-                onClick={() => onDelete(event.id)}
+                onClick={() => onDelete(event.id as string)}
                 className="px-4 py-2 text-red-600 hover:bg-red-50 rounded"
               >
                 Delete
@@ -192,10 +238,10 @@ const EventModal = ({ event, onClose, onSave, onDelete }: any) => {
 };
 
 // Task Modal Component
-const TaskModal = ({ task, onClose, onSave, onDelete }: any) => {
+const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onSave, onDelete }) => {
   const [formData, setFormData] = useState({
     title: task?.title || '',
-    priority: task?.priority || 'medium',
+    priority: (task?.priority as Task['priority']) || 'medium',
     dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : '',
     dueTime: task?.dueTime || '',
     description: task?.description || ''
@@ -203,13 +249,16 @@ const TaskModal = ({ task, onClose, onSave, onDelete }: any) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      ...task,
-      ...formData,
-      dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
+    const updatedTask: Task = {
       id: task?.id || Date.now().toString(),
-      completed: task?.completed || false
-    });
+      title: formData.title,
+      priority: formData.priority,
+      completed: task?.completed ?? false,
+      dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
+      dueTime: formData.dueTime || undefined,
+      description: formData.description || undefined,
+    };
+    onSave(updatedTask);
   };
 
   return (
@@ -236,7 +285,7 @@ const TaskModal = ({ task, onClose, onSave, onDelete }: any) => {
             <label className="block text-sm font-medium mb-1">Priority</label>
             <select
               value={formData.priority}
-              onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, priority: e.target.value as Task['priority'] })}
               className="w-full border rounded px-3 py-2"
             >
               <option value="low">Low</option>
@@ -304,7 +353,7 @@ const TaskModal = ({ task, onClose, onSave, onDelete }: any) => {
 };
 
 // Weekly View Component
-const WeeklyView = ({ currentDate, events, onEventClick, onTimeSlotClick }: any) => {
+const WeeklyView: React.FC<WeeklyViewProps> = ({ currentDate, events, onEventClick, onTimeSlotClick }) => {
   const weekDays = getWeekDays(currentDate);
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -366,7 +415,7 @@ const WeeklyView = ({ currentDate, events, onEventClick, onTimeSlotClick }: any)
 };
 
 // Monthly View Component
-const MonthlyView = ({ currentDate, events, onEventClick, onDayClick }: any) => {
+const MonthlyView: React.FC<MonthlyViewProps> = ({ currentDate, events, onEventClick, onDayClick }) => {
   const monthDays = getMonthDays(currentDate);
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -426,7 +475,7 @@ const MonthlyView = ({ currentDate, events, onEventClick, onDayClick }: any) => 
 };
 
 // Yearly View Component
-const YearlyView = ({ currentDate, events, onMonthClick }: any) => {
+const YearlyView: React.FC<YearlyViewProps> = ({ currentDate, events, onMonthClick }) => {
   const months = Array.from({ length: 12 }, (_, i) => {
     const date = new Date(currentDate.getFullYear(), i, 1);
     return {
@@ -481,7 +530,7 @@ const YearlyView = ({ currentDate, events, onMonthClick }: any) => {
 };
 
 // Tasks View Component
-const TasksView = ({ tasks, onTaskClick, onTaskToggle, onAddTask, selectedDate, onDateChange }: any) => {
+const TasksView: React.FC<TasksViewProps> = ({ tasks, onTaskClick, onTaskToggle, onAddTask, selectedDate, onDateChange }) => {
   const today = new Date();
   const safeSelectedDate = selectedDate || today;
   
@@ -503,7 +552,7 @@ const TasksView = ({ tasks, onTaskClick, onTaskToggle, onAddTask, selectedDate, 
   
   const noDateTasks = tasks.filter((task: Task) => !task.dueDate);
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: Task['priority']) => {
     switch (priority) {
       case 'high': return 'text-red-600 bg-red-50';
       case 'medium': return 'text-yellow-600 bg-yellow-50';
@@ -512,7 +561,16 @@ const TasksView = ({ tasks, onTaskClick, onTaskToggle, onAddTask, selectedDate, 
     }
   };
 
-  const TaskList = ({ title, tasks, icon, onTaskClick, onTaskToggle, getPriorityColor }: any) => (
+  type TaskListProps = {
+    title: string;
+    tasks: Task[];
+    icon: React.ReactNode;
+    onTaskClick: (task: Task) => void;
+    onTaskToggle: (id: string) => void;
+    getPriorityColor: (priority: Task['priority']) => string;
+  };
+
+  const TaskListSection: React.FC<TaskListProps> = ({ title, tasks, icon, onTaskClick, onTaskToggle, getPriorityColor }) => (
     <div className="bg-white rounded-lg border p-4 mb-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-lg flex items-center gap-2">
@@ -620,7 +678,7 @@ const TasksView = ({ tasks, onTaskClick, onTaskToggle, onAddTask, selectedDate, 
 
       {/* Selected Date Tasks */}
       {!isSameDay(safeSelectedDate, today) && (
-        <TaskList 
+        <TaskListSection 
           title={`Tasks for ${safeSelectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`} 
           tasks={selectedDateTasks} 
           icon={<Calendar size={20} />}
@@ -630,7 +688,7 @@ const TasksView = ({ tasks, onTaskClick, onTaskToggle, onAddTask, selectedDate, 
         />
       )}
 
-      <TaskList 
+      <TaskListSection 
         title="Today" 
         tasks={todayTasks} 
         icon={<CheckSquare size={20} />}
@@ -639,7 +697,7 @@ const TasksView = ({ tasks, onTaskClick, onTaskToggle, onAddTask, selectedDate, 
         getPriorityColor={getPriorityColor}
       />
       
-      <TaskList 
+      <TaskListSection 
         title="Upcoming" 
         tasks={upcomingTasks} 
         icon={<Calendar size={20} />}
@@ -648,7 +706,7 @@ const TasksView = ({ tasks, onTaskClick, onTaskToggle, onAddTask, selectedDate, 
         getPriorityColor={getPriorityColor}
       />
       
-      <TaskList 
+      <TaskListSection 
         title="Past Due" 
         tasks={pastTasks} 
         icon={<Clock size={20} />}
@@ -657,7 +715,7 @@ const TasksView = ({ tasks, onTaskClick, onTaskToggle, onAddTask, selectedDate, 
         getPriorityColor={getPriorityColor}
       />
       
-      <TaskList 
+      <TaskListSection 
         title="No Due Date" 
         tasks={noDateTasks} 
         icon={<GripVertical size={20} />}
@@ -746,7 +804,7 @@ export default function PersonalCalendarApp() {
       priority: 'low'
     }
   ]);
-  const [modalState, setModalState] = useState<any>({ type: null, data: null });
+  const [modalState, setModalState] = useState<ModalState>({ type: null, data: null });
 
   const navigateDate = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);

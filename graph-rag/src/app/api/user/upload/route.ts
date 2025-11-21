@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 export const runtime = 'nodejs';
@@ -124,8 +124,9 @@ export async function POST(req: Request) {
       });
 
     return NextResponse.json({ file: dbFile, ingest: { queued: true } });
-  } catch (e: any) {
-    console.error('Upload route error:', e);
-    return NextResponse.json({ error: e?.message || 'Internal Server Error' }, { status: 500 });
+  } catch (error) {
+    console.error('Upload route error:', error);
+    const message = error instanceof Error ? error.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

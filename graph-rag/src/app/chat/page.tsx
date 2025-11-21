@@ -1,19 +1,13 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import ChatClient from "@/components/ChatClient";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
-import Image from "next/image";
 
 export default async function ChatPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     redirect("/");
   }
-
-  const user = { name: (session.user.name as string | null) ?? null, image: (session.user.image as string | null) ?? null };
 
   return (
     <div className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)]">

@@ -3,6 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type ApiErrorResponse = { error?: string };
+
+const parseErrorResponse = async (res: Response): Promise<ApiErrorResponse> => {
+  try {
+    return await res.json();
+  } catch {
+    return {};
+  }
+};
+
 export default function FolderUpload({ folderId }: { folderId: string }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
@@ -22,8 +32,8 @@ export default function FolderUpload({ folderId }: { folderId: string }) {
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({} as any));
-        alert(err?.error || "Upload failed");
+        const err = await parseErrorResponse(res);
+        alert(err.error || "Upload failed");
         return;
       }
 

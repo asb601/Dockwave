@@ -1,11 +1,10 @@
 // app/profile/page.tsx
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { FileText } from "lucide-react";
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions);
@@ -20,7 +19,7 @@ export default async function ProfilePage() {
 
   if (!user) return <p className="max-w-3xl mx-auto p-6 text-[color:var(--muted-foreground)]">User not found.</p>;
 
-  const rootFolders = user.folders.filter((f: any) => !f.parentId);
+  const rootFolders = user.folders.filter((folder) => !folder.parentId);
   const avatar = (user.image as string | null) || null;
 
   return (
@@ -71,7 +70,7 @@ export default async function ProfilePage() {
               <p className="text-[color:var(--muted-foreground)]">No folders yet.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {user.folders.map((folder: any) => (
+                {user.folders.map((folder) => (
                   <Link key={folder.id} href={`/folders/${folder.id}`} className="group rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] hover:bg-[color:var(--secondary)] transition-colors p-4">
                     <p className="font-medium">{folder.name}</p>
                     {folder.children?.length > 0 && <p className="mt-1 text-xs text-[color:var(--muted-foreground)]">{folder.children.length} subfolder(s)</p>}
@@ -92,7 +91,7 @@ export default async function ProfilePage() {
               <p className="text-[color:var(--muted-foreground)]">No files uploaded.</p>
             ) : (
               <ul className="space-y-2">
-                {user.files.map((file: any) => (
+                {user.files.map((file) => (
                   <li key={file.id} className="flex justify-between items-center rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3">
                     <p>{file.name}</p>
                     <p className="text-[color:var(--muted-foreground)] text-xs">{new Date(file.createdAt).toLocaleDateString()}</p>

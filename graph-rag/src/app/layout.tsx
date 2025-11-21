@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { headers } from "next/headers";
-import Sidebar from "@/utils/Sidebar";
 import AppNav from "@/utils/AppNav";
 import SidebarGate from "@/utils/SidebarGate";
 

@@ -3,14 +3,13 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { FileText, ArrowRight, Sparkles } from "lucide-react";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
   const session = await getServerSession(authOptions);
   const targetHref = session ? "/home" : "/login";
-  const pageName = session ? "Home" : "Login";
 
   return (
     <div className="min-h-dvh bg-[color:var(--background)] text-[color:var(--foreground)]">

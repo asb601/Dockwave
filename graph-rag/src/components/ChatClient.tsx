@@ -26,7 +26,7 @@ export default function ChatClient() {
       const data = await res.json();
       const assistant: Message = { role: "assistant", content: data?.message?.content ?? "(no response)" };
       setMessages((m) => [...m, assistant]);
-    } catch (e) {
+    } catch {
       setMessages((m) => [...m, { role: "assistant", content: "Sorry, something went wrong." }]);
     } finally {
       setSending(false);
@@ -37,7 +37,9 @@ export default function ChatClient() {
     e.preventDefault();
     const v = inputRef.current?.value || "";
     if (!v.trim()) return;
-    inputRef.current && (inputRef.current.value = "");
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
     sendMessage(v);
   }
 

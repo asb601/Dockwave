@@ -3,6 +3,15 @@
 import { useRouter } from "next/navigation";
 
 type FileItem = { id: string; name: string; createdAt: string | Date };
+type ApiErrorResponse = { error?: string };
+
+const parseErrorResponse = async (res: Response): Promise<ApiErrorResponse> => {
+  try {
+    return await res.json();
+  } catch {
+    return {};
+  }
+};
 
 export default function FolderFiles({ files }: { files: FileItem[] }) {
   const router = useRouter();
@@ -12,8 +21,8 @@ export default function FolderFiles({ files }: { files: FileItem[] }) {
     try {
       const res = await fetch(`/api/user/files/${fileId}/delete`, { method: "DELETE" });
       if (!res.ok) {
-        const e = await res.json().catch(() => ({} as any));
-        alert(e?.error || "Failed to delete file");
+        const error = await parseErrorResponse(res);
+        alert(error.error || "Failed to delete file");
         return;
       }
     } finally {
@@ -27,7 +36,7 @@ export default function FolderFiles({ files }: { files: FileItem[] }) {
       if (!res.ok) return alert("Failed to open file");
       const { url } = await res.json();
       window.open(url, "_blank", "noreferrer");
-    } catch (e) {
+    } catch {
       alert("Failed to open file");
     }
   }

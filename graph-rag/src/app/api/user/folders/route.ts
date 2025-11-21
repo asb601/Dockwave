@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -36,11 +36,14 @@ export async function POST(req: Request) {
       data: { name, userId, parentId },
     });
     return NextResponse.json({ folder }, { status: 201 });
-  } catch (err: any) {
-    if (err?.code === 'P2002') {
+  } catch (err) {
+    if (isPrismaErrorWithCode(err) && err.code === 'P2002') {
       return NextResponse.json({ error: 'A folder with this name already exists here' }, { status: 409 });
     }
     console.error('Create folder error:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+const isPrismaErrorWithCode = (error: unknown): error is { code?: string } =>
+  typeof error === 'object' && error !== null && 'code' in error;

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
+
+type ChatMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+};
 
 export async function POST(req: Request) {
   try {
@@ -9,11 +14,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const userId = session.user.id as string;
-    const userEmail = (session.user as any)?.email || undefined;
+    const userEmail = session.user.email ?? undefined;
 
-    const body = await req.json();
-    const messages = body?.messages || [];
-    const lastUser = messages?.filter((m: any) => m.role === "user").pop()?.content || "";
+    const body = (await req.json()) as { messages?: ChatMessage[] };
+    const messages = body?.messages ?? [];
+    const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? "";
 
     // Call FastAPI agent
     const AI_BASE_URL = process.env.AI_BASE_URL || "http://localhost:8000";
@@ -33,12 +38,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `Agent error: ${resp.status} ${text}` }, { status: 502 });
     }
 
-    const data = (await resp.json()) as any;
-    const answer: string = (data?.answer as string) || "";
+    const data = (await resp.json()) as { answer?: string };
+    const answer = data?.answer ?? "";
 
     // Only return the assistant's answer (no diagnostics or sources)
     return NextResponse.json({ message: { role: "assistant", content: answer } });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 }

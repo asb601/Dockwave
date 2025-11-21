@@ -11,6 +11,7 @@ type UserInfo = { name: string | null; image: string | null };
 type Folder = { id: string; name: string; parentId?: string | null };
 
 type FileItem = { id: string; name: string; createdAt: string; s3Key: string; folderId?: string | null };
+type FilesAndFoldersResponse = { folders?: Folder[]; files?: FileItem[] };
 
 export default function FolderClient({
   user,
@@ -25,24 +26,23 @@ export default function FolderClient({
   parent?: { id: string; name: string } | null;
   initialFiles: Array<{ id: string; name: string; createdAt: string; s3Key: string; folderId?: string | null }>;
 }) {
-  const [files, setFiles] = useState<FileItem[]>(initialFiles as FileItem[]);
+  const [files, setFiles] = useState<FileItem[]>(initialFiles);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(false);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   // Drag & drop state
   const [isDragging, setIsDragging] = useState(false);
-  const [dragDepth, setDragDepth] = useState(0);
   const [uploading, setUploading] = useState(false);
 
   async function fetchData() {
     setLoading(true);
     try {
       const res = await fetch("/api/user/files-folders");
-      const data = await res.json();
-      setFolders((data.folders || []) as Folder[]);
-      const byFolder = (data.files || []).filter((f: FileItem) => f.folderId === folderId);
+      const data = (await res.json()) as FilesAndFoldersResponse;
+      setFolders(data.folders || []);
+      const byFolder = (data.files || []).filter((file) => file.folderId === folderId);
       setFiles(byFolder);
-    } catch (e) {
+    } catch {
       // noop
     } finally {
       setLoading(false);
@@ -51,6 +51,7 @@ export default function FolderClient({
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folderId]);
 
   async function openFileInBrowser(fileId: string) {
@@ -59,7 +60,7 @@ export default function FolderClient({
       if (!res.ok) return alert("Failed to open file");
       const { url } = await res.json();
       window.open(url, "_blank", "noreferrer");
-    } catch (e) {
+    } catch {
       alert("Failed to open file");
     }
   }
@@ -79,7 +80,7 @@ export default function FolderClient({
       form.append("folderId", folderId);
       const res = await fetch("/api/user/upload", { method: "POST", body: form });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({} as any));
+        const err = await res.json().catch(() => ({} as { error?: string }));
         alert(err?.error || "Upload failed");
         return;
       }
@@ -96,23 +97,14 @@ export default function FolderClient({
   }
   function handleDragEnter(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
-    setDragDepth((d) => {
-      const next = d + 1;
-      if (next > 0) setIsDragging(true);
-      return next;
-    });
+    setIsDragging(true);
   }
   function handleDragLeave(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
-    setDragDepth((d) => {
-      const next = Math.max(0, d - 1);
-      if (next === 0) setIsDragging(false);
-      return next;
-    });
+    setIsDragging(false);
   }
   async function handleDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
-    setDragDepth(0);
     setIsDragging(false);
     const list = e.dataTransfer?.files;
     if (!list || list.length === 0) return;

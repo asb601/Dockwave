@@ -22,16 +22,11 @@ interface FileItem {
   folderId?: string | null;
 }
 
-interface UserInfo {
-  name: string | null;
-  image: string | null;
-}
-
-export default function HomeClient({ user }: { user: UserInfo }) {
+export default function HomeClient() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery] = useState("");
 
   // Folder creation state
   const [newFolderName, setNewFolderName] = useState("");
@@ -51,7 +46,7 @@ export default function HomeClient({ user }: { user: UserInfo }) {
       const data = await res.json();
       setFolders(data.folders || []);
       setFiles(data.files || []);
-    } catch (error) {
+    } catch {
       setFolders([]);
       setFiles([]);
     }
@@ -96,7 +91,7 @@ export default function HomeClient({ user }: { user: UserInfo }) {
 
       const { url } = await res.json();
       window.open(url, "_blank");
-    } catch (error) {
+    } catch {
       alert("Failed to open file");
     }
   }

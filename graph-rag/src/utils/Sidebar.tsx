@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Folder, MessageSquare, Calendar as CalIcon, Home, ChevronLeft } from "lucide-react";
+import { MessageSquare, Calendar as CalIcon, Home, ChevronLeft } from "lucide-react";
 
 const SIDEBAR_KEY = "app.sidebar.collapsed";
 
@@ -24,7 +24,7 @@ export default function Sidebar() {
     });
   };
 
-  const Item = ({ href, icon: Icon, label }: { href: string; icon: any; label: string }) => (
+  const Item = ({ href, icon: Icon, label }: { href: string; icon: React.ElementType; label: string }) => (
     <Link
       href={href}
       className={`group flex items-center gap-3 rounded-md px-3 py-2 transition-colors border border-transparent hover:border-[color:var(--border)] hover:bg-[color:var(--secondary)]`}

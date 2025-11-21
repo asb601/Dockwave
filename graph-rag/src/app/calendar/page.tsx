@@ -3,13 +3,65 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, CheckSquare, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { Calendar, CheckSquare, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { CalendarEvent, Task, ViewType, CalendarViewType } from '@/types';
 import { formatDate } from '@/utils/dateUtils';
 import { EventModal } from '@/components/calendar/EventModal';
 import { WeeklyView, MonthlyView, YearlyView } from '../../components/calendar/CalendarViews';
 import { TaskModal } from '@/components/tasks/TaskModal';
 import { TaskList } from '@/components/tasks/TaskList';
+
+type ApiTask = {
+  id: string;
+  title: string;
+  description?: string | null;
+  dueDate?: string | null;
+  dueTime?: string | null;
+  priority?: string | null;
+  completed?: boolean | null;
+  eventId?: string | null;
+};
+
+type ApiEvent = {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  color?: string | null;
+  description?: string | null;
+  tasks?: ApiTask[] | null;
+};
+
+type TaskWithEvent = Task & { eventId?: string };
+
+type ModalState =
+  | { type: 'event'; data: CalendarEvent | null }
+  | { type: 'task'; data: (Partial<TaskWithEvent> & { dueDate?: Date }) | null }
+  | { type: null; data: null };
+
+const normalizeTask = (task: ApiTask): TaskWithEvent => ({
+  id: task.id,
+  title: task.title,
+  description: task.description ?? undefined,
+  dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+  dueTime: task.dueTime ?? undefined,
+  priority: (task.priority?.toLowerCase() as Task['priority']) ?? 'medium',
+  completed: Boolean(task.completed),
+  eventId: task.eventId ?? undefined,
+});
+
+const normalizeEvent = (event: ApiEvent): CalendarEvent => ({
+  id: event.id,
+  title: event.title,
+  start: new Date(event.start),
+  end: new Date(event.end),
+  color: event.color || '#3b82f6',
+  description: event.description ?? '',
+  tasks: event.tasks?.map(normalizeTask),
+});
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
 
 export default function PersonalCalendarApp() {
   const [view, setView] = useState<ViewType>('calendar');
@@ -19,13 +71,12 @@ export default function PersonalCalendarApp() {
 
   // Remote data state
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [errorEvents, setErrorEvents] = useState<string | null>(null);
   const [errorTasks, setErrorTasks] = useState<string | null>(null);
 
-  const [modalState, setModalState] = useState<{ type: 'event' | 'task' | null; data: any }>({ type: null, data: null });
+  const [modalState, setModalState] = useState<ModalState>({ type: null, data: null });
   const [showHistory, setShowHistory] = useState(false);
 
   // Range helpers
@@ -57,18 +108,11 @@ export default function PersonalCalendarApp() {
       const qs = `start=${start.toISOString()}&end=${end.toISOString()}`;
       const res = await fetch(`/api/calendar/events?${qs}`);
       if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      const mapped: CalendarEvent[] = (data.events || []).map((e: any) => ({
-        id: e.id,
-        title: e.title,
-        start: new Date(e.start),
-        end: new Date(e.end),
-        color: e.color || '#3b82f6',
-        description: e.description || '',
-      }));
+      const data = (await res.json()) as { events?: ApiEvent[] };
+      const mapped = (data.events ?? []).map(normalizeEvent);
       setEvents(mapped);
-    } catch (e: any) {
-      setErrorEvents(e.message || 'Failed to load events');
+    } catch (error) {
+      setErrorEvents(getErrorMessage(error, 'Failed to load events'));
       setEvents([]);
     } finally {
       setLoadingEvents(false);
@@ -84,11 +128,10 @@ export default function PersonalCalendarApp() {
       const qs = `start=${start.toISOString()}&end=${end.toISOString()}`;
       const res = await fetch(`/api/calendar/events?${qs}`);
       if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      // Each event has a .tasks array
-      setEvents(data.events || []);
-    } catch (e: any) {
-      setErrorTasks(e.message || 'Failed to load events and tasks');
+      const data = (await res.json()) as { events?: ApiEvent[] };
+      setEvents((data.events ?? []).map(normalizeEvent));
+    } catch (error) {
+      setErrorTasks(getErrorMessage(error, 'Failed to load events and tasks'));
       setEvents([]);
     } finally {
       setLoadingTasks(false);
@@ -159,7 +202,7 @@ export default function PersonalCalendarApp() {
           event.id = data.event.id;
         }
       }
-    } catch (e) {
+    } catch {
       // silent fail UI could show toast
     }
     setModalState({ type: null, data: null });
@@ -175,7 +218,7 @@ export default function PersonalCalendarApp() {
   };
 
   // Task create/update
-  const handleTaskSave = async (task: any) => {
+  const handleTaskSave = async (task: TaskWithEvent) => {
     const isEdit = events.some(ev => (ev.tasks || []).find(t => t.id === task.id));
     try {
       let eventId = task.eventId;
@@ -193,7 +236,7 @@ export default function PersonalCalendarApp() {
           }),
         });
         if (!eventRes.ok) throw new Error(await eventRes.text());
-        const eventData = await eventRes.json();
+        const eventData = (await eventRes.json()) as { event: { id: string } };
         eventId = eventData.event.id;
       }
       if (isEdit) {
@@ -207,7 +250,7 @@ export default function PersonalCalendarApp() {
             description: task.description,
             dueDate: (task.dueDate || selectedTaskDate).toISOString(),
             dueTime: task.dueTime,
-            priority: task.priority,
+            priority: task.priority?.toUpperCase(),
             completed: task.completed,
           }),
         });
@@ -221,7 +264,7 @@ export default function PersonalCalendarApp() {
             description: task.description,
             dueDate: (task.dueDate || selectedTaskDate).toISOString(),
             dueTime: task.dueTime,
-            priority: task.priority,
+            priority: task.priority?.toUpperCase(),
             completed: task.completed,
           }),
         });
@@ -233,7 +276,7 @@ export default function PersonalCalendarApp() {
   };
 
   // Task delete
-  const handleTaskDelete = async (taskId: string, eventId?: string) => {
+  const handleTaskDelete = async (taskId: string) => {
     try { await fetch(`/api/calendar/tasks?id=${taskId}`, { method: 'DELETE' }); } catch {}
     setModalState({ type: null, data: null });
     fetchAllEventsWithTasks();

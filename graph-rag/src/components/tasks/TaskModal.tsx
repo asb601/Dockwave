@@ -11,9 +11,16 @@ interface TaskModalProps {
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onSave, onDelete }) => {
-  const [formData, setFormData] = useState({
+  type FormData = {
+    title: string;
+    priority: "low" | "medium" | "high";
+    dueDate: string;
+    dueTime: string;
+    description: string;
+  };
+  const [formData, setFormData] = useState<FormData>({
     title: task?.title || '',
-    priority: task?.priority || 'medium',
+    priority: (task?.priority as "low" | "medium" | "high") || 'medium',
     dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : '',
     dueTime: task?.dueTime || '',
     description: task?.description || ''
@@ -62,7 +69,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onSave, onD
             <label className="block text-sm font-medium text-foreground mb-2">Priority</label>
             <select
               value={formData.priority}
-              onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, priority: e.target.value as "low" | "medium" | "high" })}
               className="w-full bg-secondary text-foreground border border-border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="low">Low</option>

@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
+
+type AiCleanupResponse = {
+  ok?: boolean;
+  [key: string]: unknown;
+};
 
 export const runtime = 'nodejs';
 
@@ -14,8 +19,8 @@ const s3 = new S3Client({
   } : undefined,
 });
 
-export async function DELETE(_req: Request, context: { params: { id: string } }) {
-  const { id } = context.params; // Avoid destructuring in signature to satisfy Next.js guidance
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session || !session.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -50,7 +55,7 @@ export async function DELETE(_req: Request, context: { params: { id: string } })
   // AI cleanup (vectors + graph + knowledge json)
   const aiBase = process.env.AI_SERVICE_URL || 'http://localhost:8000';
   const serviceToken = process.env.SERVICE_TOKEN || '';
-  let aiCleanup: any = { ok: false };
+  let aiCleanup: AiCleanupResponse = { ok: false };
   try {
     const resp = await fetch(`${aiBase}/delete/file`, {
       method: 'POST',

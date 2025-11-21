@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { FileText } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
