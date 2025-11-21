@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   const events = await prisma.calendarEvent.findMany({
     where,
     orderBy: { start: 'asc' },
-    include: { attendees: true, reminders: true, series: true }
+    include: { tasks: true }
   });
   return NextResponse.json({ events });
 }
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const userId = session.user.id as string;
 
-  const { title, description, start, end, isAllDay, location, color, recurrenceRule, seriesId } = body;
+  const { title, description, start, end, isAllDay, color, tasks } = body;
   if (!title || !start) return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
 
   const event = await prisma.calendarEvent.create({
@@ -46,11 +46,18 @@ export async function POST(req: Request) {
       start: new Date(start),
       end: end ? new Date(end) : new Date(start),
       isAllDay: !!isAllDay,
-      location,
       color: color || '#3b82f6',
-      recurrenceRule,
-      seriesId: seriesId || null,
       userId,
+      tasks: tasks && Array.isArray(tasks) ? {
+        create: tasks.map((t: any) => ({
+          title: t.title,
+          description: t.description,
+          dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
+          dueTime: t.dueTime,
+          priority: t.priority ? t.priority.toUpperCase() : 'MEDIUM',
+          completed: !!t.completed,
+        }))
+      } : undefined
     }
   });
   return NextResponse.json({ event }, { status: 201 });
@@ -65,7 +72,6 @@ export async function PATCH(req: Request) {
   const { id, ...updates } = body;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-  // ensure ownership
   const existing = await prisma.calendarEvent.findFirst({ where: { id, userId, deleted: false } });
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -77,10 +83,7 @@ export async function PATCH(req: Request) {
       ...('start' in updates ? { start: new Date(updates.start) } : {}),
       ...('end' in updates && updates.end ? { end: new Date(updates.end) } : {}),
       ...('isAllDay' in updates ? { isAllDay: !!updates.isAllDay } : {}),
-      ...('location' in updates ? { location: updates.location } : {}),
       ...('color' in updates ? { color: updates.color } : {}),
-      ...('recurrenceRule' in updates ? { recurrenceRule: updates.recurrenceRule } : {}),
-      ...('seriesId' in updates ? { seriesId: updates.seriesId || null } : {}),
     }
   });
   return NextResponse.json({ event });
@@ -100,20 +103,4 @@ export async function DELETE(req: Request) {
 
   await prisma.calendarEvent.update({ where: { id }, data: { deleted: true } });
   return NextResponse.json({ success: true });
-}
-
-// PUT /api/calendar/events (toggle all-day flag)
-// Convenience: /api/calendar/events?id=ID&toggleAllDay=1
-export async function PUT(req: Request) {
-  const session = await getServerSession(authOptions as any);
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-  const toggle = searchParams.get('toggleAllDay');
-  if (!id || !toggle) return NextResponse.json({ error: 'Missing params' }, { status: 400 });
-  const userId = session.user.id as string;
-  const existing = await prisma.calendarEvent.findFirst({ where: { id, userId, deleted: false } });
-  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  const event = await prisma.calendarEvent.update({ where: { id }, data: { isAllDay: !existing.isAllDay } });
-  return NextResponse.json({ event });
 }

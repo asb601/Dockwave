@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, CheckSquare, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Calendar, CheckSquare, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { CalendarEvent, Task, ViewType, CalendarViewType } from '@/types';
 import { formatDate } from '@/utils/dateUtils';
 import { EventModal } from '@/components/calendar/EventModal';
@@ -26,6 +26,7 @@ export default function PersonalCalendarApp() {
   const [errorTasks, setErrorTasks] = useState<string | null>(null);
 
   const [modalState, setModalState] = useState<{ type: 'event' | 'task' | null; data: any }>({ type: null, data: null });
+  const [showHistory, setShowHistory] = useState(false);
 
   // Range helpers
   const getRangeForView = useCallback((): { start: Date; end: Date } => {
@@ -74,32 +75,25 @@ export default function PersonalCalendarApp() {
     }
   }, [getRangeForView]);
 
-  // Fetch tasks (by selected day to keep UI light)
-  const fetchTasks = useCallback(async () => {
+  // Fetch all events with their tasks for the tasks view
+  const fetchAllEventsWithTasks = useCallback(async () => {
     setLoadingTasks(true);
     setErrorTasks(null);
     try {
-      const dateParam = selectedTaskDate.toISOString();
-      const res = await fetch(`/api/calendar/tasks?date=${dateParam}`);
+      const { start, end } = getRangeForView();
+      const qs = `start=${start.toISOString()}&end=${end.toISOString()}`;
+      const res = await fetch(`/api/calendar/events?${qs}`);
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      const mapped: Task[] = (data.tasks || []).map((t: any) => ({
-        id: t.id,
-        title: t.title,
-        completed: !!t.completed,
-        priority: (t.priority || 'MEDIUM').toLowerCase(),
-        dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
-        dueTime: t.dueTime || '',
-        description: t.description || '',
-      }));
-      setTasks(mapped);
+      // Each event has a .tasks array
+      setEvents(data.events || []);
     } catch (e: any) {
-      setErrorTasks(e.message || 'Failed to load tasks');
-      setTasks([]);
+      setErrorTasks(e.message || 'Failed to load events and tasks');
+      setEvents([]);
     } finally {
       setLoadingTasks(false);
     }
-  }, [selectedTaskDate]);
+  }, [getRangeForView]);
 
   // Initial + dependency fetches
   useEffect(() => {
@@ -107,8 +101,8 @@ export default function PersonalCalendarApp() {
   }, [fetchEvents]);
 
   useEffect(() => {
-    if (view === 'tasks') fetchTasks();
-  }, [fetchTasks, view]);
+    if (view === 'tasks') fetchAllEventsWithTasks();
+  }, [fetchAllEventsWithTasks, view]);
 
   // Navigation handlers
   const navigateDate = (direction: 'prev' | 'next') => {
@@ -181,55 +175,73 @@ export default function PersonalCalendarApp() {
   };
 
   // Task create/update
-  const handleTaskSave = async (task: Task) => {
-    const isEdit = !!tasks.find(t => t.id === task.id);
+  const handleTaskSave = async (task: any) => {
+    const isEdit = events.some(ev => (ev.tasks || []).find(t => t.id === task.id));
     try {
-      const dueDate = task.dueDate ? new Date(task.dueDate) : selectedTaskDate;
+      let eventId = task.eventId;
+      // If no eventId, create a CalendarEvent first
+      if (!eventId) {
+        const eventRes = await fetch('/api/calendar/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: task.title,
+            description: task.description,
+            start: (task.dueDate || selectedTaskDate).toISOString(),
+            end: (task.dueDate || selectedTaskDate).toISOString(),
+            color: '#3b82f6',
+          }),
+        });
+        if (!eventRes.ok) throw new Error(await eventRes.text());
+        const eventData = await eventRes.json();
+        eventId = eventData.event.id;
+      }
       if (isEdit) {
         await fetch('/api/calendar/tasks', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: task.id,
+            eventId,
             title: task.title,
             description: task.description,
-            dueDate: dueDate ? dueDate.toISOString() : null,
+            dueDate: (task.dueDate || selectedTaskDate).toISOString(),
             dueTime: task.dueTime,
             priority: task.priority,
             completed: task.completed,
           }),
         });
       } else {
-        const res = await fetch('/api/calendar/tasks', {
+        await fetch('/api/calendar/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            eventId,
             title: task.title,
             description: task.description,
-            dueDate: dueDate ? dueDate.toISOString() : null,
+            dueDate: (task.dueDate || selectedTaskDate).toISOString(),
             dueTime: task.dueTime,
             priority: task.priority,
+            completed: task.completed,
           }),
         });
-        if (res.ok) {
-          const data = await res.json();
-          task.id = data.task.id;
-        }
       }
+      // After save, refresh all events with tasks
+      fetchAllEventsWithTasks();
     } catch {}
     setModalState({ type: null, data: null });
-    fetchTasks();
   };
 
-  const handleTaskDelete = async (id: string) => {
-    try { await fetch(`/api/calendar/tasks?id=${id}`, { method: 'DELETE' }); } catch {}
+  // Task delete
+  const handleTaskDelete = async (taskId: string, eventId?: string) => {
+    try { await fetch(`/api/calendar/tasks?id=${taskId}`, { method: 'DELETE' }); } catch {}
     setModalState({ type: null, data: null });
-    fetchTasks();
+    fetchAllEventsWithTasks();
   };
 
   const handleTaskToggle = async (id: string) => {
     try { await fetch(`/api/calendar/tasks?id=${id}&toggle=1`, { method: 'PUT' }); } catch {}
-    fetchTasks();
+    fetchAllEventsWithTasks();
   };
 
   // Date range text
@@ -245,6 +257,19 @@ export default function PersonalCalendarApp() {
     } else {
       return currentDate.getFullYear().toString();
     }
+  };
+
+  // Helper to check if a date is today
+  const isToday = (date: Date) => {
+    const now = new Date();
+    return date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate();
+  };
+  // Helper to check if a date is in the past
+  const isPast = (date: Date) => {
+    const now = new Date();
+    return date < new Date(now.getFullYear(), now.getMonth(), now.getDate());
   };
 
   return (
@@ -322,7 +347,7 @@ export default function PersonalCalendarApp() {
                   onClick={() => setCalendarView('year')}
                   className={`px-3 py-1 rounded text-sm ${
                     calendarView === 'year'
-                      ? 'bg-[color:var(--primary)] text-[color:var,--primary-foreground)]'
+                     ? 'bg-[color:var(--primary)] text-[color:var(--primary-foreground)]'
                       : 'bg-[color:var(--secondary)] text-[color:var(--foreground)] hover:bg-[color:var(--accent)]'
                   }`}
                 >
@@ -347,7 +372,7 @@ export default function PersonalCalendarApp() {
               {calendarView === 'week' && (
                 <WeeklyView
                   currentDate={currentDate}
-                  events={events}
+                  events={events.map(ev => ({ ...ev, isPast: isPast(new Date(ev.start)) }))}
                   onEventClick={(event: CalendarEvent) => setModalState({ type: 'event', data: event })}
                   onTimeSlotClick={(date: Date) => setModalState({ type: 'task', data: { dueDate: date, dueTime: date.toTimeString().slice(0,5) } })}
                 />
@@ -355,7 +380,7 @@ export default function PersonalCalendarApp() {
               {calendarView === 'month' && (
                 <MonthlyView
                   currentDate={currentDate}
-                  events={events}
+                  events={events.map(ev => ({ ...ev, isPast: isPast(new Date(ev.start)) }))}
                   onEventClick={(event: CalendarEvent) => setModalState({ type: 'event', data: event })}
                   onDayClick={(date: Date) => setModalState({ type: 'task', data: { dueDate: date } })}
                 />
@@ -377,16 +402,113 @@ export default function PersonalCalendarApp() {
 
           {view === 'tasks' && (
             <>
-              <TaskList
-                tasks={tasks}
-                onTaskClick={(task) => setModalState({ type: 'task', data: task })}
-                onTaskToggle={handleTaskToggle}
-                onAddTask={() => setModalState({ type: 'task', data: null })}
-                selectedDate={selectedTaskDate}
-                onDateChange={(d) => { setSelectedTaskDate(d); fetchTasks(); }}
-              />
-              {loadingTasks && <div className="text-sm text-[color:var(--muted-foreground)] mt-2">Loading tasks…</div>}
-              {errorTasks && <div className="text-sm text-[color:var(--destructive)] mt-2">{errorTasks}</div>}
+              {/* Today Card */}
+              <div className="mb-6 p-4 rounded-lg border bg-[color:var(--card)]">
+                <div className="font-bold text-xl mb-2 flex items-center gap-2">Today <span className="text-xs text-[color:var(--muted-foreground)]">({events.filter(ev => isToday(new Date(ev.start))).length})</span></div>
+                {events.filter(ev => isToday(new Date(ev.start))).length > 0 ? (
+                  events.filter(ev => isToday(new Date(ev.start))).map(event => (
+                    <div key={event.id} className="mb-4">
+                      <div className="font-semibold text-lg mb-2">{event.title} <span className="text-xs text-[color:var(--muted-foreground)]">{formatDate(new Date(event.start))}</span></div>
+                      <TaskList
+                        tasks={event.tasks || []}
+                        onTaskClick={(task) => setModalState({ type: 'task', data: { ...task, eventId: event.id } })}
+                        onTaskToggle={handleTaskToggle}
+                        onAddTask={() => setModalState({ type: 'task', data: { eventId: event.id, dueDate: new Date(event.start) } })}
+                        selectedDate={selectedTaskDate}
+                        onDateChange={(d) => setSelectedTaskDate(d)}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <div className="text-[color:var(--muted-foreground)] mb-2">No tasks</div>
+                    <button
+                      className="flex items-center gap-2 px-4 py-2 rounded bg-[color:var(--primary)] text-[color:var(--primary-foreground)] hover:opacity-90 font-semibold"
+                      onClick={() => setModalState({ type: 'task', data: { dueDate: new Date(), eventId: undefined } })}
+                    >
+                      <Plus size={18} /> Add Task
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Upcoming Card */}
+              <div className="mb-6 p-4 rounded-lg border bg-[color:var(--card)]">
+                <div className="font-bold text-xl mb-2 flex items-center gap-2">Upcoming <span className="text-xs text-[color:var(--muted-foreground)]">({events.filter(ev => {
+                  const d = new Date(ev.start);
+                  return d > new Date(new Date().setHours(23,59,59,999));
+                }).length})</span></div>
+                {events.filter(ev => {
+                  const d = new Date(ev.start);
+                  return d > new Date(new Date().setHours(23,59,59,999));
+                }).length > 0 ? (
+                  events.filter(ev => {
+                    const d = new Date(ev.start);
+                    return d > new Date(new Date().setHours(23,59,59,999));
+                  }).map(event => (
+                    <div key={event.id} className="mb-4">
+                      <div className="font-semibold text-lg mb-2">{event.title} <span className="text-xs text-[color:var(--muted-foreground)]">{formatDate(new Date(event.start))}</span></div>
+                      <TaskList
+                        tasks={event.tasks || []}
+                        onTaskClick={(task) => setModalState({ type: 'task', data: { ...task, eventId: event.id } })}
+                        onTaskToggle={handleTaskToggle}
+                        onAddTask={() => setModalState({ type: 'task', data: { eventId: event.id, dueDate: new Date(event.start) } })}
+                        selectedDate={selectedTaskDate}
+                        onDateChange={(d) => setSelectedTaskDate(d)}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <div className="text-[color:var(--muted-foreground)] mb-2">No tasks</div>
+                    <button
+                      className="flex items-center gap-2 px-4 py-2 rounded bg-[color:var(--primary)] text-[color:var,--primary-foreground)] hover:opacity-90 font-semibold"
+                      onClick={() => setModalState({ type: 'task', data: { dueDate: new Date(new Date().setDate(new Date().getDate() + 1)), eventId: undefined } })}
+                    >
+                      <Plus size={18} /> Add Task
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Past Due Card as Dropdown */}
+              <div className="mb-6 p-4 rounded-lg border bg-[color:var(--card)]">
+                <button
+                  className="w-full flex items-center justify-between font-bold text-xl mb-2 focus:outline-none bg-transparent px-0 text-white"
+                  style={{ background: 'none', border: 'none' }}
+                  onClick={() => setShowHistory(v => !v)}
+                  aria-expanded={showHistory}
+                >
+                  <span className="flex items-center gap-2 text-white">Past Due <span className="text-xs text-white">({events.filter(ev => isPast(new Date(ev.start))).length})</span></span>
+                  <span className={`transition-transform ${showHistory ? 'rotate-90' : ''} text-white`}><ChevronRight size={20} color="white" /></span>
+                </button>
+                {showHistory && (
+                  <div>
+                    {events.filter(ev => isPast(new Date(ev.start))).length > 0 ? (
+                      events.filter(ev => isPast(new Date(ev.start))).map(event => (
+                        <div key={event.id} className="mb-4 p-4 rounded-lg border bg-[color:var(--muted)]">
+                          <div className="font-semibold text-lg mb-2 line-through">{event.title} <span className="text-xs text-[color:var(--muted-foreground)]">{formatDate(new Date(event.start))}</span></div>
+                          <TaskList
+                            tasks={event.tasks || []}
+                            onTaskClick={(task) => setModalState({ type: 'task', data: { ...task, eventId: event.id } })}
+                            onTaskToggle={handleTaskToggle}
+                            onAddTask={() => setModalState({ type: 'task', data: { eventId: event.id, dueDate: new Date(event.start) } })}
+                            selectedDate={selectedTaskDate}
+                            onDateChange={(d) => setSelectedTaskDate(d)}
+                          />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <div className="text-[color:var(--muted-foreground)] mb-2">No past due events</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {loadingTasks && <div className="text-sm text-[color:var(--muted-foreground)] mt-2">Loading events and tasks…</div>}
+              {errorTasks && <div className="text-sm text-[color:var,--destructive)] mt-2">{errorTasks}</div>}
             </>
           )}
         </div>

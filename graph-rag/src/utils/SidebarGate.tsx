@@ -5,6 +5,6 @@ import Sidebar from "@/utils/Sidebar";
 
 export default function SidebarGate() {
   const pathname = usePathname();
-  if (!pathname || pathname === "/") return null;
+  if (!pathname || pathname === "/"|| pathname === "/login") return null;
   return <Sidebar />;
 }

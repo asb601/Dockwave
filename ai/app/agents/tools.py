@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Optional
 from neo4j import GraphDatabase
 from app.util.log import log_event, estimate_cost
 
+import requests
+
 # Optional embeddings
 try:
     from sentence_transformers import SentenceTransformer  # type: ignore
@@ -229,3 +231,25 @@ class SummarizeTool:
 
     async def run(self, query: str) -> Dict[str, Any]:
         return {"summary": f"Summary for: {query}"}
+
+
+@dataclass
+class GetMeetingsTool:
+    api_base_url: str
+    auth_token: str
+    name: str = "get_meetings"
+    description: str = "Fetch all calendar events (with tasks) for the current user from the Next.js API. Returns an array of events, each with tasks[]."
+
+    async def run(self) -> Dict[str, Any]:
+        url = f"{self.api_base_url}/api/calendar/events"
+        headers = {
+            'Content-Type': 'application/json',
+            'Cookie': f'next-auth.session-token={self.auth_token}',
+        }
+        try:
+            response = requests.get(url, headers=headers)
+            if not response.ok:
+                return {"error": response.text, "status": response.status_code}
+            return response.json()
+        except Exception as e:
+            return {"error": str(e)}

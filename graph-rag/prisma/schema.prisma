@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 // ---------- NextAuth models ----------
 
 model User {
@@ -21,11 +22,7 @@ model User {
   files     File[]
   folders   Folder[]
 
-  // calendar relations
   events    CalendarEvent[]
-  tasks     Task[]
-  eventAttendees EventAttendee[]
-  series    EventSeries[]
 }
 
 model Account {
@@ -87,8 +84,6 @@ enum Priority {
   HIGH
 }
 
-// Calendar & Task models below provide scheduling features
-
 model CalendarEvent {
   id          String    @id @default(cuid())
   title       String
@@ -96,68 +91,18 @@ model CalendarEvent {
   start       DateTime
   end         DateTime?
   isAllDay    Boolean   @default(false)
-  location    String?
   color       String    @default("#3b82f6")
 
-  // Recurrence support: store iCal RRULE on series and also direct rrule for simple cases
-  recurrenceRule String?      // e.g. "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE"
-  seriesId       String?      
-  series         EventSeries? @relation("SeriesToEvent", fields: [seriesId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  userId     String
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  reminders  EventReminder[]
-  attendees  EventAttendee[]
+  tasks    Task[]
 
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
-  deleted    Boolean    @default(false) // soft-delete flag (optional)
+  deleted    Boolean    @default(false)
 
   @@index([userId, start])
-  @@index([seriesId])
-}
-
-model EventSeries {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rrule     String    // canonical RRULE (iCal style) describing recurrence
-  exdates   String?   // optional JSON array or comma separated list of exception dates
-  notes     String?
-
-  events    CalendarEvent[] @relation("SeriesToEvent")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model EventReminder {
-  id            String    @id @default(cuid())
-  eventId       String
-  minutesBefore Int       // e.g., 30 for 30 minutes before
-  method        String?   // "popup", "email", "sms" etc. (application-defined)
-  createdAt     DateTime  @default(now())
-
-  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@index([eventId])
-}
-
-model EventAttendee {
-  id        String   @id @default(cuid())
-  eventId   String
-  userId    String?  // if attendee is app user
-  email     String?  // fallback for external invitees
-  name      String?
-  status    String?  // "accepted" | "declined" | "tentative" | null
-  createdAt DateTime @default(now())
-
-  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user  User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([eventId])
-  @@index([userId])
 }
 
 model Task {
@@ -165,18 +110,16 @@ model Task {
   title       String
   description String?
   dueDate     DateTime? // store date/time in DateTime
-  dueTime     String?   // optional human-friendly time string (e.g. "17:00") — optional
+  dueTime     String?   // optional human-friendly time string (e.g. "17:00")
   priority    Priority  @default(MEDIUM)
   completed   Boolean   @default(false)
 
-  userId   String
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deleted   Boolean  @default(false)
 
-  @@index([userId, dueDate])
+  @@index([eventId, dueDate])
 }
-
-// When querying events/tasks, remember to filter deleted=false for active items.

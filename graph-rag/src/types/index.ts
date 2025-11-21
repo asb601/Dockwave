@@ -7,6 +7,7 @@ export interface CalendarEvent {
   end: Date;
   color: string;
   description?: string;
+  tasks?: Task[]; // <-- add this for tasks view
 }
 
 export interface Task {
