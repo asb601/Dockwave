@@ -5,6 +5,8 @@ import Link from "next/link";
 import AppTopBar from "@/components/AppTopBar";
 import UploadSection from "@/components/UploadSection";
 import { FileIcon, EyeIcon, TrashIcon } from "lucide-react";
+import { FolderIcon, FolderPlusIcon, MoreVertical, ChevronDownIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 
 type UserInfo = { name: string | null; image: string | null };
 
@@ -31,6 +33,8 @@ export default function FolderClient({
   const [loading, setLoading] = useState(false);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   // Drag & drop state
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -117,8 +121,31 @@ export default function FolderClient({
     <div className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)]">
       {/* Removed gradient overlays to use global theme */}
 
-      <AppTopBar user={user} onNewUploadFile={() => setShowUploadPanel(true)} />
-
+          <div className="max-w-6xl mx-auto px-4 pt-4 flex justify-end">
+        <div className="relative">
+          <button
+            onClick={() => setNewOpen((v) => !v)}
+            className="flex items-center gap-2 px-3 py-2 rounded-md border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)] hover:bg-[color:var(--accent)]"
+            aria-haspopup="menu"
+            aria-expanded={newOpen}
+          >
+            <PlusIcon className="w-4 h-4" />
+            <span>New</span>
+            <ChevronDownIcon className={`w-4 h-4 transition-transform ${newOpen ? "rotate-180" : ""}`} />
+          </button>
+          {newOpen && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-[color:var(--card)] border border-[color:var(--border)] rounded-md z-50">
+            
+              <button
+                onClick={() => { setShowUploadPanel(true); setNewOpen(false); }}
+                className="w-full text-left px-3 py-2 hover:bg-[color:var(--accent)]"
+              >
+                ⬆️ Upload File
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
       <div
         className="relative z-10 max-w-7xl mx-auto px-6 py-8"
         onDragOver={handleDragOver}

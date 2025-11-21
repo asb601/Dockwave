@@ -177,7 +177,7 @@ export default function HomeClient() {
               {/* Parent folder selector */}
               <div className="relative w-full md:w-64">
                 <button
-                  className="border border-[color:var(--border)] bg-[color:var(--background)] p-2 rounded w-full flex justify-between"
+                  className="border  text-white border-[color:var(--border)] bg-[color:var(--background)] p-2 rounded w-full flex justify-between"
                   onClick={() => setIsSelectOpen(!isSelectOpen)}
                 >
                   {parentForNew
@@ -187,9 +187,9 @@ export default function HomeClient() {
                 </button>
 
                 {isSelectOpen && (
-                  <div className="absolute left-0 right-0 border border-[color:var(--border)] bg-[color:var(--card)] rounded mt-1 z-10">
+                  <div className="absolute   left-0 right-0 border border-[color:var(--border)] bg-[color:var(--card)] rounded mt-1 z-10">
                     <button
-                      className="block w-full px-3 py-2 text-left hover:bg-[color:var(--accent)]"
+                      className="block  w-full px-3 py-2 text-left hover:bg-[color:var(--accent)]"
                       onClick={() => {
                         setParentForNew(null);
                         setIsSelectOpen(false);

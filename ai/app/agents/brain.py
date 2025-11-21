@@ -66,6 +66,15 @@ class BrainAgent:
         hits = sum(1 for t in distinct if t in src)
         return hits / max(1, len(distinct))
 
+    async def _log_and_run_tool(self, tool, **kwargs):
+        # Log every tool invocation with tool name and arguments
+        log_event("tool.invoke", {
+            "tool": getattr(tool, 'name', str(tool)),
+            "description": getattr(tool, 'description', ''),
+            "args": kwargs
+        })
+        return await tool.run(**kwargs)
+
     async def run(self, goal: str, user_email: Optional[str] = None, max_iters: int = 4, min_hits: int = 6) -> Dict[str, Any]:
         user_email = user_email or self._get_user_email()
         kb = self.kb_loader.load(user_email) if user_email else {}
@@ -83,7 +92,7 @@ class BrainAgent:
             before_count = len(collected)
             for q in queries:
                 if vtool:
-                    vout = await vtool.run(query=q, top_k=15)
+                    vout = await self._log_and_run_tool(vtool, query=q, top_k=15)
                     for i, itx in enumerate(vout.get("items", [])):
                         itx = dict(itx)
                         itx.setdefault("source", "vector")
@@ -91,7 +100,7 @@ class BrainAgent:
                         itx["query"] = q
                         collected.append(itx)
                 if gtool:
-                    gout = await gtool.run(query=q, top_k=10)
+                    gout = await self._log_and_run_tool(gtool, query=q, top_k=10)
                     for i, itx in enumerate(gout.get("items", [])):
                         itx = dict(itx)
                         itx.setdefault("source", "graph")
@@ -125,7 +134,7 @@ class BrainAgent:
             if len(reranked) >= (min_hits or self.min_hits) and confidence > self.conf_summarize:
                 llm = self.tools.get("llm_summarize")
                 if llm:
-                    llm_out = await llm.run(question=goal, chunks=reranked)
+                    llm_out = await self._log_and_run_tool(llm, question=goal, chunks=reranked)
                     answer = llm_out.get("answer", "")
                     ev = self._evidence_score(answer, reranked)
                     status = "grounded" if ev >= self.min_evidence else "insufficient"
@@ -165,7 +174,7 @@ class BrainAgent:
             final = naive_rerank(collected, goal, top_k=10)
         llm = self.tools.get("llm_summarize")
         if llm and final:
-            llm_out = await llm.run(question=goal, chunks=final)
+            llm_out = await self._log_and_run_tool(llm, question=goal, chunks=final)
             answer = llm_out.get("answer", "")
             ev = self._evidence_score(answer, final)
             status = "grounded" if ev >= self.min_evidence else "insufficient"
@@ -189,7 +198,7 @@ class BrainAgent:
                 "scratchpad": self.scratchpad,
             }
         if llm and not final:
-            llm_out = await llm.run(question=goal, chunks=[])
+            llm_out = await self._log_and_run_tool(llm, question=goal, chunks=[])
             answer = llm_out.get("answer", "")
             # Force explicit disclaimer when no evidence
             answer = (
