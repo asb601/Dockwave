@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const lastUser = messages.filter((m) => m.role === "user").pop()?.content ?? "";
 
     // Call FastAPI agent
-    const AI_BASE_URL = process.env.AI_BASE_URL || "https://intellidoc-i53b.onrender.com";
+    const AI_BASE_URL = process.env.AI_BASE_URL ;
     const resp = await fetch(`${AI_BASE_URL}/agent/run`, {
       method: "POST",
       headers: {
