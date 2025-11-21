@@ -3,7 +3,7 @@ import React from 'react';
 import { Calendar, CheckSquare, Clock, Flag, GripVertical, Plus } from 'lucide-react';
 import { Task } from '@/types';
 import { isSameDay } from '@/utils/dateUtils';
-import { cn } from '@/lib/utils';
+
 
 interface TaskListProps {
   tasks: Task[];
@@ -44,10 +44,10 @@ const TaskSection: React.FC<TaskSectionProps> = ({ title, tasks, icon, onTaskCli
       {tasks.map((task) => (
         <div
           key={task.id}
-          className={cn(
-            "p-3 rounded-lg border border-[color:var(--border)] cursor-pointer hover:shadow-md hover:border-[color:var(--ring)] transition-all",
-            task.completed ? "bg-[color:var(--muted)]/50 opacity-60" : "bg-[color:var(--card)]"
-          )}
+          className={
+            "p-3 rounded-lg border border-[color:var(--border)] cursor-pointer hover:shadow-md hover:border-[color:var(--ring)] transition-all " +
+            (task.completed ? "bg-[color:var(--muted)]/50 opacity-60" : "bg-[color:var(--card)]")
+          }
           onClick={() => onTaskClick(task)}
         >
           <div className="flex items-start gap-3">
@@ -62,13 +62,12 @@ const TaskSection: React.FC<TaskSectionProps> = ({ title, tasks, icon, onTaskCli
             />
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className={cn(
-                  "text-sm",
-                  task.completed ? "line-through text-muted-foreground" : "font-medium text-foreground"
-                )}>
+                <span className={
+                  "text-sm " + (task.completed ? "line-through text-muted-foreground" : "font-medium text-foreground")
+                }>
                   {task.title}
                 </span>
-                <span className={cn("text-xs px-2 py-1 rounded font-medium", getPriorityColor(task.priority))}>
+                <span className={"text-xs px-2 py-1 rounded font-medium " + getPriorityColor(task.priority)}>
                   <Flag size={10} className="inline mr-1" />
                   {task.priority}
                 </span>

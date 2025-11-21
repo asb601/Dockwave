@@ -2,7 +2,7 @@
 import React from 'react';
 import { CalendarEvent } from '@/types';
 import { getWeekDays, getMonthDays, isSameDay } from '@/utils/dateUtils';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/cn';
 
 interface WeeklyViewProps {
   currentDate: Date;

@@ -21,6 +21,8 @@ export default async function ProfilePage() {
 
   const rootFolders = user.folders.filter((folder) => !folder.parentId);
   const avatar = (user.image as string | null) || null;
+  // Get provider from session.user if available
+  const provider = session?.user?.provider || null;
 
   return (
     <div className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)]">
@@ -39,7 +41,11 @@ export default async function ProfilePage() {
           )}
           <div>
             <h1 className="text-2xl font-bold">{user.name || "No Name"}</h1>
-            <p className="text-sm text-[color:var(--muted-foreground)]">GitHub ID: {user.githubId || "Not linked"}</p>
+            {provider === "google" ? (
+              <p className="text-sm text-[color:var(--muted-foreground)]">Gmail ID: {user.email || "Not linked"}</p>
+            ) : (
+              <p className="text-sm text-[color:var(--muted-foreground)]">GitHub ID: {user.githubId || "Not linked"}</p>
+            )}
             <p className="text-sm text-[color:var(--muted-foreground)]">Email: {user.email || "Not provided"}</p>
           </div>
         </div>
