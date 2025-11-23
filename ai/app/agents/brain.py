@@ -91,6 +91,7 @@ class BrainAgent:
         This function only coordinates the plan and returns results.
         Also logs the orchestration plan as a brain_event (once per run).
         """
+        print("enetred brain agent run method")
         user_email = user_email or self._get_user_email()
         from app.util.prompts import RouterPrompt
         from app.util.log import log_brain_event
@@ -116,6 +117,7 @@ class BrainAgent:
             self.scratchpad.append(f"get_meetings result: {meetings_result}")
         # If router picked no tools, ask LLM for a direct reply
         if not plan.get("graph_rag") and not plan.get("get_meetings"):
+            print("no tool selected calling llm_summarize")
             llm_tool = self.tools.get("llm_summarize")
             if llm_tool:
                 # Use summarizer LLM to generate a natural reply (no context)
