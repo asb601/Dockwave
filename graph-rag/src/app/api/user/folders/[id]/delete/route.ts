@@ -24,7 +24,7 @@ export async function DELETE(_req: Request, context: { params: Promise<{ id: str
   }
 
   // Call AI cleanup first (best-effort)
-  const aiBase = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+  const aiBase = process.env.AI_BASE_URL || 'http://localhost:8000';
   const serviceToken = process.env.SERVICE_TOKEN || '';
   try {
     await fetch(`${aiBase}/delete/folder`, {

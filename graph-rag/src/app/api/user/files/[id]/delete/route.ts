@@ -53,7 +53,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   }
 
   // AI cleanup (vectors + graph + knowledge json)
-  const aiBase = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+  const aiBase = process.env.AI_BASE_URL || 'http://localhost:8000';
   const serviceToken = process.env.SERVICE_TOKEN || '';
   let aiCleanup: AiCleanupResponse = { ok: false };
   try {

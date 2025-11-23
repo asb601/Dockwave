@@ -89,7 +89,7 @@ export async function POST(req: Request) {
     });
 
     // Trigger ingestion in the Python FastAPI service (fire-and-forget)
-    const aiBase = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    const aiBase = process.env.AI_BASE_URL || 'http://localhost:8000';
     const serviceToken = process.env.SERVICE_TOKEN || '';
 
     // Do not await; log outcome asynchronously

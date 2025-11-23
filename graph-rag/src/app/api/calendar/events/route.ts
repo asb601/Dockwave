@@ -134,3 +134,4 @@ export async function DELETE(req: Request) {
   await prisma.calendarEvent.update({ where: { id }, data: { deleted: true } });
   return NextResponse.json({ success: true });
 }
+

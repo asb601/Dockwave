@@ -22,6 +22,7 @@ export async function POST(req: Request) {
 
     // Call FastAPI agent
     const AI_BASE_URL = process.env.AI_BASE_URL ;
+    console.log("AI_BASE_URL:", AI_BASE_URL);
     const resp = await fetch(`${AI_BASE_URL}/agent/run`, {
       method: "POST",
       headers: {
