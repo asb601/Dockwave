@@ -1,10 +1,13 @@
 from __future__ import annotations
-
+import cohere
 from dataclasses import dataclass
+import os
 from typing import Any, Dict, List, Optional
-
+import json
 from neo4j import GraphDatabase
 from app.util.log import log_event, estimate_cost
+from app.util.prompts import RouterPrompt,summarize_prompt
+
 
 import requests
 
@@ -14,6 +17,56 @@ try:
 except Exception:  # pragma: no cover
     SentenceTransformer = None  # type: ignore
 
+@dataclass
+class LLMRouterTool:
+    name: str = "llm_router"
+    description: str = "LLM-based router that decides which tool to call and with what arguments."
+    llm: Any = None
+    prompt: Any = None
+
+    def __post_init__(self):
+        if self.llm is None:
+            self.llm = LLMTool()
+
+        # FIX: RouterPrompt must be instantiated or be a function that returns a template
+        # If it's a class → instantiate it
+        if callable(RouterPrompt):
+            self.prompt = RouterPrompt()
+        else:
+            self.prompt = RouterPrompt  # if it's already a string/template
+
+    async def run(self, question: str) -> Dict[str, Any]:
+        """
+        Calls the LLM to get a routing plan for the given question.
+        Returns a dict with the LLM's answer (a JSON plan string).
+        """
+        # FIX: Build the prompt with the question
+        if hasattr(self.prompt, "build"):
+            used_prompt = self.prompt.build(question)
+        else:
+            used_prompt = self.prompt.format(question=question) if "{question}" in self.prompt else self.prompt
+
+        # FIX: call the LLM properly with empty chunks since routing doesn't need documents
+        response = await self.llm.run(
+            question=question,
+            prompt=used_prompt,
+            chunks=[]
+        )
+
+        # FIX: normalize output
+        if isinstance(response, dict) and "answer" in response:
+            return {"answer": response["answer"]}
+
+        if hasattr(response, "choices"):
+            # OpenAI-like response
+            try:
+                return {"answer": response.choices[0].message.content}
+            except:
+                pass
+
+        # fallback
+        return {"answer": str(response)}
+
 
 @dataclass
 class VectorSearchTool:
@@ -21,19 +74,24 @@ class VectorSearchTool:
     user: str
     password: str
     index_name: str = "chunk_embedding_index"
-    model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    model_name: str = "embed-english-v3.0"
     name: str = "vector_search"
     description: str = "Vector search over Chunk.embedding using Neo4j vector index."
 
     def _embed(self, text: str) -> List[float]:
-        if SentenceTransformer is None:
-            raise RuntimeError("sentence-transformers not installed")
+        api_key = os.getenv("embeedings_api")
+        if not api_key:
+            raise RuntimeError("Cohere API key not set in environment (embeedings_api or COHERE_API_KEY)")
+        co = cohere.Client(api_key)
         # Lazy model load (cached on the class)
-        if not hasattr(self, "_model"):
-            setattr(self, "_model", SentenceTransformer(self.model_name))  # type: ignore
-        model = getattr(self, "_model")  # type: ignore
-        vec = model.encode([text], normalize_embeddings=True)[0]
-        return vec.astype("float32").tolist()  # type: ignore
+        response = co.embed(
+            texts=[text],
+            input_type="search_query",
+            model=self.model_name,
+            embedding_types=["float"]
+        )
+        # Use .float_ to get the float embeddings
+        return response.embeddings.float_[0]
 
     async def run(self, query: str, top_k: int = 15) -> Dict[str, Any]:
         qv = self._embed(query)
@@ -166,7 +224,7 @@ class LLMTool:
                 return False
         return False
 
-    async def run(self, question: str, chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def run(self, question: str, prompt: str, chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
         cites: List[str] = []
         for i, ch in enumerate(chunks[:12]):
             cites.append(f"[{i+1}] {ch.get('file')}: {(ch.get('text') or '')[:200].replace('\n',' ')}")
@@ -177,18 +235,7 @@ class LLMTool:
             return {"answer": "Model not configured.", "provider": "stub"}
 
         deployment = getattr(self, "_deployment", self.model_name)
-        system_prompt = (
-    "You are a helpful, friendly, and knowledgeable assistant. Your primary goal is to be useful and supportive in your conversations.\n\n"
-    "You have access to a special function that can search through uploaded documents (like PDFs) to find relevant information. Your behavior should follow these core principles: and the new tool has been added that get GetMeetingsTool which will return u the mettings of the users which will help u get there information there meeting there tasks and related information now ur a powerful assistant with mutliple assitant those are tools get the information and give best personailised respone to the user\n\n"
-    "1.  **Seamless Integration:** Use the document context when it is provided and relevant. Do not announce \"the documents say...\" or \"based on the context...\" unless citing a specific source. Weave the information naturally into your response.\n"
-    "    *   **For citing sources:** When you directly quote or paraphrase a specific fact from a document, simply add a citation like `[n]` at the end of the relevant sentence.\n\n"
-    "2.  **Confident General Knowledge:** If no relevant context is found for a query, or if the query is general, answer directly and confidently using your own knowledge. Do not mention the absence of documents. Just be a helpful assistant.\n\n"
-    "3.  **Strict Grounding & Honesty:** Never hallucinate or invent information from the documents. If the user asks a specific question that should be in the documents but you cannot find the answer, say so plainly and offer to help with what you *can* do.\n"
-    "    *   *Example:* \"I've looked through the documents, but I couldn't find a specific mention of [X]. However, based on the available information, [Y] is discussed. Would you like me to go into detail on that?\"\n\n"
-    "4.  **Tone:** Always be warm, engaging, and proactive. Your tone should feel like a knowledgeable and friendly colleague.\n\n"
-    "**Handling Specific Scenarios:**\n\n"
-    "*   **User asks about the files/context itself:** If a user asks \"What files do I have?\" or \"What can you see?\", provide a concise, friendly summary of the available document contexts (e.g., \"You have a few research papers uploaded, one about neural networks and another about climate data. How can I help you with them?\"). *This simulates the system knowing its own \"knowledge base.\"*"
-   )
+        system_prompt = prompt
         user_prompt = f"Question: {question}\n\nContext:\n{context}\n\nAnswer concisely. Include [n] citations only when grounded in the context."
 
         try:
@@ -224,33 +271,89 @@ class LLMTool:
             return {"answer": f"LLM error: {e}", "provider": "stub-error"}
 
 
-@dataclass
-class SummarizeTool:
-    name: str = "summarize"
-    description: str = "Summarize a query using a trivial heuristic (stub)."
 
-    async def run(self, query: str) -> Dict[str, Any]:
-        return {"summary": f"Summary for: {query}"}
+
+from dataclasses import dataclass
+from typing import Any, Dict
+from datetime import datetime
+import requests
+from app.util.log import log_event
 
 
 @dataclass
 class GetMeetingsTool:
-    api_base_url: str
-    auth_token: str
+    """
+    Always uses http://localhost:3000 as API base URL.
+    Fetches calendar events between start & end ISO8601 dates.
+    """
+    api_base_url: str = "http://localhost:3000"
     name: str = "get_meetings"
-    description: str = "Fetch all calendar events (with tasks) for the current user from the Next.js API. Returns an array of events, each with tasks[]."
+    description: str = (
+        "Fetch all calendar events (with tasks) for the current user from the Next.js API. "
+        "Accepts start and end date as ISO8601 strings."
+    )
 
-    async def run(self) -> Dict[str, Any]:
-        log_event("tool.invoke", {"tool": self.name, "description": self.description})
-        url = f"{self.api_base_url}/api/calendar/events"
-        headers = {
-            'Content-Type': 'application/json',
-            'Cookie': f'next-auth.session-token={self.auth_token}',
+    async def run(self, start: str, end: str) -> Dict[str, Any]:
+        print(f"[GetMeetingsTool] Called with start={start}, end={end}")
+        print(f"[GetMeetingsTool] api_base_url = {self.api_base_url}")
+
+        log_event(
+            "tool.invoke",
+            {"tool": self.name, "description": self.description, "start": start, "end": end},
+        )
+
+        # ---------------------------------------------------------
+        # Helper to convert date → full ISO8601 UTC format
+        # ---------------------------------------------------------
+        def to_iso8601_z(dt: str, is_start: bool) -> str:
+            # If already ISO8601 with Z suffix -> keep as-is
+            if "T" in dt and dt.endswith("Z"):
+                return dt
+
+            try:
+                parsed = datetime.fromisoformat(dt)
+
+                if is_start:
+                    return parsed.strftime("%Y-%m-%dT00:00:00.000Z")
+                else:
+                    return parsed.strftime("%Y-%m-%dT23:59:59.000Z")
+
+            except Exception:
+                # If format is weird, send raw — backend may handle
+                return dt
+
+        formatted_start = to_iso8601_z(start, is_start=True)
+        formatted_end = to_iso8601_z(end, is_start=False)
+
+        # -------------------------------
+        # Construct final request
+        # -------------------------------
+        print(os.getenv("NEXT_API_BASE"))
+        url = f"{os.getenv('NEXT_API_BASE')}/api/calendar/events/eventsALL"
+        print(f"[GetMeetingsTool] Final request URL: {url}")
+
+        params = {
+            "start": formatted_start,
+            "end": formatted_end,
         }
+
+        print(f"[GetMeetingsTool] Query params: {params}")
+
+        headers = {"Content-Type": "application/json"}
+
+        # -------------------------------
+        # Send HTTP Request
+        # -------------------------------
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, params=params, timeout=10)
+            print(f"[GetMeetingsTool] Response status: {response.status_code}")
+
             if not response.ok:
+                print(f"[GetMeetingsTool] Error response: {response.text}")
                 return {"error": response.text, "status": response.status_code}
+
             return response.json()
+
         except Exception as e:
+            print(f"[GetMeetingsTool] Exception: {str(e)}")
             return {"error": str(e)}

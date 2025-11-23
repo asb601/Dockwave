@@ -4,15 +4,12 @@ uvicorn[standard]
 python-dotenv
 pydantic
 neo4j
-sentence-transformers
 boto3
 numpy
 pypdf
 openai
-
-# sentence-transformers backend
-torch
-
+requests
+cohere
 # Optional (uncomment if you later use these features)
 # pdfminer.six      # advanced PDF text extraction
 # pytesseract       # OCR

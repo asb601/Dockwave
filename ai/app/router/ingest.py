@@ -1,14 +1,18 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-import os, json, re
+import os, json, re,requests
 import boto3
-from sentence_transformers import SentenceTransformer
+import cohere
+import asyncio
 from typing import List, Optional
 from ..services.graph import GraphClient
 from ..util.auth import verify_service_token
 from ..services.pdf_extract import extract_text_from_pdf_bytes
+import dotenv
 
+dotenv.load_dotenv()
 router = APIRouter()
+co = cohere.AsyncClient(os.getenv("embeedings_api", ""))
 
 class IngestRequest(BaseModel):
     user_id: str  # internal user id (for namespace)
@@ -60,6 +64,7 @@ def summarize(text: str, max_chars: int = 4000) -> str:
 
 @router.post("/file", response_model=IngestResponse, dependencies=[Depends(verify_service_token)])
 async def ingest_file(payload: IngestRequest):
+    print("Ingesting file:", os.getenv("embeedings_api"))
     bucket = payload.s3_bucket or os.getenv("AWS_S3_BUCKET", os.getenv("AWS_BUCKET_NAME", "codeen601"))
     s3 = boto3.client(
         "s3",
@@ -79,9 +84,24 @@ async def ingest_file(payload: IngestRequest):
 
     chunks = dynamic_chunk(text)
 
-    model_name = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-    embedder = SentenceTransformer(model_name)
-    embeddings = embedder.encode(chunks, batch_size=32, show_progress_bar=False).tolist()
+    response = requests.post(
+            "https://api.cohere.com/v2/embed",
+            headers={
+                "Authorization": f"Bearer {os.getenv('embeedings_api')}",
+            },
+            json={
+                "model": "embed-v4.0",
+                "input_type": "search_document",
+                "texts": chunks,
+                "embedding_types": [
+                    "float"
+                ]
+            },
+        )
+
+    embeddings_json = response.json()
+    # Get the float embeddings
+    embeddings = embeddings_json["embeddings"]["float"]
 
     # Build chunk payloads for Neo4j (full switch to Neo4j storage)
     chunk_payloads = []
@@ -94,7 +114,6 @@ async def ingest_file(payload: IngestRequest):
             "charEnd": sum(len(c) for c in chunks[: i + 1]),
             "embedding": emb,
         })
-
     summary = summarize(text)
     graph = GraphClient()
     # Upsert file and relations
@@ -132,3 +151,4 @@ async def ingest_file(payload: IngestRequest):
         print("Knowledge JSON persist failed:", e)
 
     return IngestResponse(ok=True, chunks=len(chunks), vectors_upserted=upserted, summary=summary, knowledge=knowledge, knowledge_s3_key=knowledge_s3_key)
+

@@ -46,3 +46,12 @@ def cost_config() -> Dict[str, float]:
 def estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
     cfg = cost_config()
     return (prompt_tokens / 1000.0) * cfg["in_per_1k"] + (completion_tokens / 1000.0) * cfg["out_per_1k"]
+
+
+def log_brain_event(event_type: str, data: dict) -> None:
+    # Always log to ai/logs/brain_event.jsonl relative to project root
+    log_path = Path(__file__).parent.parent.parent / 'logs' / 'brain_event.jsonl'
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    evt = {"ts": datetime.now(timezone.utc).isoformat(), "type": event_type, **data}
+    with log_path.open('a', encoding='utf-8') as f:
+        f.write(json.dumps(evt, ensure_ascii=False) + '\n')
