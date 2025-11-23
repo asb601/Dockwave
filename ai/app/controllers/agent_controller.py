@@ -23,7 +23,7 @@ async def run_agent(req: RunAgentRequest):
     neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     neo4j_user = os.getenv("NEO4J_USERNAME", "neo4j")
     neo4j_password = os.getenv("NEO4J_PASSWORD", "please-change-me")
-    api_base_url = os.getenv("AI_BASE_URL", "http://localhost:8000")
+    api_base_url = os.getenv("ai_base_url", "http://localhost:8000")
     print(req.user_email)
     tools = [
         VectorSearchTool(uri=neo4j_uri, user=neo4j_user, password=neo4j_password),

@@ -192,7 +192,9 @@ class LLMTool:
 
     def _configured(self) -> bool:
         import os
+        
         if openai is None:
+            print("enetered configured This is the reason ")
             return False
         # Azure config via explicit env vars
         azure_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -228,6 +230,7 @@ class LLMTool:
 
     async def run(self, question: str, prompt: str, chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
         cites: List[str] = []
+        print("api of openai", os.getenv("AZURE_OPENAI_API_KEY"),"openai from self",self._client,"self._configured()",self._configured())
         for i, ch in enumerate(chunks[:12]):
             cites.append(f"[{i+1}] {ch.get('file')}: {(ch.get('text') or '')[:200].replace('\n',' ')}")
         context = "\n".join(cites) or "(no context)"
