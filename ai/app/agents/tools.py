@@ -7,7 +7,9 @@ import json
 from neo4j import GraphDatabase
 from app.util.log import log_event, estimate_cost
 from app.util.prompts import RouterPrompt,summarize_prompt
+import dotenv   
 
+dotenv.load_dotenv()
 
 import requests
 
@@ -213,7 +215,7 @@ class LLMTool:
             except Exception:
                 return False
         # Public OpenAI fallback
-        public_key = os.getenv("OPENAI_API_KEY")
+        public_key = os.getenv("AZURE_OPENAI_API_KEY")
         if public_key and OpenAI is not None:
             try:
                 self._client = OpenAI(api_key=public_key)
@@ -231,7 +233,7 @@ class LLMTool:
         context = "\n".join(cites) or "(no context)"
 
         if self._client is None and not self._configured():
-            log_event("llm.unconfigured", {"provider": "none"})
+            log_event("llm.unconfigured", {"provider": "none"}, os.getenv("AZURE_OPENAI_API_KEY"))
             return {"answer": "Model not configured.", "provider": "stub"}
 
         deployment = getattr(self, "_deployment", self.model_name)

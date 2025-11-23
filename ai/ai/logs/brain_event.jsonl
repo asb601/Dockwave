@@ -1,0 +1,30 @@
+{"ts": "2025-11-23T16:04:20.938479+00:00", "type": "llm.call", "provider": "azure-openai", "deployment": "gpt-4o-mini", "prompt_tokens": 200, "completion_tokens": 20}
+{"ts": "2025-11-23T16:04:22.107891+00:00", "type": "tool.invoke", "tool": "vector_search", "description": "Vector search over Chunk.embedding using Neo4j vector index."}
+{"ts": "2025-11-23T16:04:23.164830+00:00", "type": "tool.invoke", "tool": "graph_search", "description": "Search Neo4j chunks and files by text query (simple CONTAINS se..."}
+{"ts": "2025-11-23T16:04:23.771995+00:00", "type": "tool.invoke", "tool": "vector_search", "description": "Vector search over Chunk.embedding using Neo4j vector index."}
+{"ts": "2025-11-23T16:04:24.820717+00:00", "type": "tool.invoke", "tool": "graph_search", "description": "Search Neo4j chunks and files by text query (simple CONTAINS se..."}
+{"ts": "2025-11-23T16:04:25.416599+00:00", "type": "iteration.eval", "iter": 1, "queries": ["hey could u help me with summarizing the file i have", "hey could u help me ..."]}
+{"ts": "2025-11-23T16:04:25.417174+00:00", "type": "tool.invoke", "tool": "vector_search", "description": "Vector search over Chunk.embedding using Neo4j vector index."}
+{"ts": "2025-11-23T16:04:26.419517+00:00", "type": "tool.invoke", "tool": "graph_search", "description": "Search Neo4j chunks and files by text query (simple CONTAINS se..."}
+{"ts": "2025-11-23T16:04:26.979463+00:00", "type": "tool.invoke", "tool": "vector_search", "description": "Vector search over Chunk.embedding using Neo4j vector index."}
+{"ts": "2025-11-23T16:04:28.008534+00:00", "type": "tool.invoke", "tool": "graph_search", "description": "Search Neo4j chunks and files by text query (simple CONTAINS se..."}
+{"ts": "2025-11-23T16:04:28.573897+00:00", "type": "tool.invoke", "tool": "vector_search", "description": "Vector search over Chunk.embedding using Neo4j vector index."}
+{"ts": "2025-11-23T16:04:29.536788+00:00", "type": "tool.invoke", "tool": "graph_search", "description": "Search Neo4j chunks and files by text query (simple CONTAINS se..."}
+{"ts": "2025-11-23T16:04:30.083981+00:00", "type": "iteration.eval", "iter": 2, "queries": ["hey could u help me with summarizing the file i have", "hey could u help me ..."]}
+{"ts": "2025-11-23T16:04:30.084405+00:00", "type": "tool.invoke", "tool": "vector_search", "description": "Vector search over Chunk.embedding using Neo4j vector index."}
+{"ts": "2025-11-23T16:04:31.321005+00:00", "type": "tool.invoke", "tool": "graph_search", "description": "Search Neo4j chunks and files by text query (simple CONTAINS se..."}
+{"ts": "2025-11-23T16:04:31.916278+00:00", "type": "tool.invoke", "tool": "vector_search", "description": "Vector search over Chunk.embedding using Neo4j vector index."}
+{"ts": "2025-11-23T16:04:32.989306+00:00", "type": "tool.invoke", "tool": "graph_search", "description": "Search Neo4j chunks and files by text query (simple CONTAINS se..."}
+{"ts": "2025-11-23T16:04:33.542073+00:00", "type": "tool.invoke", "tool": "vector_search", "description": "Vector search over Chunk.embedding using Neo4j vector index."}
+{"ts": "2025-11-23T16:04:34.523870+00:00", "type": "tool.invoke", "tool": "graph_search", "description": "Search Neo4j chunks and files by text query (simple CONTAINS se..."}
+{"ts": "2025-11-23T16:04:35.076313+00:00", "type": "iteration.eval", "iter": 3, "queries": ["hey could u help me with summarizing the file i have", "hey could u help me ..."]}
+{"ts": "2025-11-23T16:04:35.076550+00:00", "type": "tool.invoke", "tool": "vector_search", "description": "Vector search over Chunk.embedding using Neo4j vector index."}
+{"ts": "2025-11-23T16:04:36.094736+00:00", "type": "tool.invoke", "tool": "graph_search", "description": "Search Neo4j chunks and files by text query (simple CONTAINS se..."}
+{"ts": "2025-11-23T16:04:36.635243+00:00", "type": "tool.invoke", "tool": "vector_search", "description": "Vector search over Chunk.embedding using Neo4j vector index."}
+{"ts": "2025-11-23T16:04:37.609782+00:00", "type": "tool.invoke", "tool": "graph_search", "description": "Search Neo4j chunks and files by text query (simple CONTAINS se..."}
+{"ts": "2025-11-23T16:04:38.186329+00:00", "type": "tool.invoke", "tool": "vector_search", "description": "Vector search over Chunk.embedding using Neo4j vector index."}
+{"ts": "2025-11-23T16:04:39.145739+00:00", "type": "tool.invoke", "tool": "graph_search", "description": "Search Neo4j chunks and files by text query (simple CONTAINS se..."}
+{"ts": "2025-11-23T16:04:39.721343+00:00", "type": "iteration.eval", "iter": 4, "queries": ["hey could u help me with summarizing the file i have", "hey could u help me ..."]}
+{"ts": "2025-11-23T16:04:39.721638+00:00", "type": "tool.invoke", "tool": "llm_summarize", "description": "Summarize with citations from provided chunks. Uses Azure/Open..."}
+{"ts": "2025-11-23T17:20:29.842434+00:00", "type": "llm.unconfigured", "provider": "none"}
+{"ts": "2025-11-23T17:24:13.825982+00:00", "type": "llm.unconfigured", "provider": "none"}
