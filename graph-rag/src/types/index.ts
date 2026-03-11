@@ -1,5 +1,28 @@
 // types/index.ts
 
+// ── File / Folder types ───────────────────────────────────────────────────────
+
+export interface Folder {
+  id: string;
+  name: string;
+  parentId?: string | null;
+}
+
+export interface FileItem {
+  id: string;
+  name: string;
+  createdAt: string;
+  s3Key: string;
+  folderId?: string | null;
+}
+
+export interface FilesAndFoldersResponse {
+  folders?: Folder[];
+  files?: FileItem[];
+}
+
+// ── Calendar / Task types ─────────────────────────────────────────────────────
+
 export interface CalendarEvent {
   id: string;
   title: string;

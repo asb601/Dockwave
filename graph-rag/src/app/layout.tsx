@@ -33,7 +33,7 @@ export default async function RootLayout({
         <div className="flex min-h-dvh">
           {/* Sidebar decided on the client to avoid header/pathname mismatches */}
           <SidebarGate />
-          <main className="flex-1 min-w-0">
+          <main className="flex-1 min-w-0 pt-14 md:pt-0">
             {isLanding && <AppNav />}
             {children}
           </main>
