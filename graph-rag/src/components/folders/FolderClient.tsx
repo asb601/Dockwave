@@ -1,22 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import AppTopBar from "@/components/AppTopBar";
 import UploadSection from "@/components/UploadSection";
-import { FileIcon, EyeIcon, TrashIcon } from "lucide-react";
-import { FolderIcon, FolderPlusIcon, MoreVertical, ChevronDownIcon } from "lucide-react";
-import { PlusIcon } from "lucide-react";
+import { FileIcon, EyeIcon, TrashIcon, X } from "lucide-react";
+import { FolderPlusIcon, ChevronDownIcon, PlusIcon } from "lucide-react";
+import { useFilesAndFolders } from "@/hooks/useFilesAndFolders";
+import type { FileItem } from "@/types";
 
 type UserInfo = { name: string | null; image: string | null };
 
-type Folder = { id: string; name: string; parentId?: string | null };
-
-type FileItem = { id: string; name: string; createdAt: string; s3Key: string; folderId?: string | null };
-type FilesAndFoldersResponse = { folders?: Folder[]; files?: FileItem[] };
-
 export default function FolderClient({
-  user,
   folderId,
   folderName,
   parent,
@@ -26,37 +20,16 @@ export default function FolderClient({
   folderId: string;
   folderName: string;
   parent?: { id: string; name: string } | null;
-  initialFiles: Array<{ id: string; name: string; createdAt: string; s3Key: string; folderId?: string | null }>;
+  initialFiles: FileItem[];
 }) {
-  const [files, setFiles] = useState<FileItem[]>(initialFiles);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { folders, files, loading, refresh } = useFilesAndFolders(folderId);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
-  // Drag & drop state
-  const [showCreateForm, setShowCreateForm] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  async function fetchData() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/user/files-folders");
-      const data = (await res.json()) as FilesAndFoldersResponse;
-      setFolders(data.folders || []);
-      const byFolder = (data.files || []).filter((file) => file.folderId === folderId);
-      setFiles(byFolder);
-    } catch {
-      // noop
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [folderId]);
+  // Use initialFiles as fallback while hook loads
+  const displayFiles = files.length > 0 || !loading ? files : initialFiles;
 
   async function openFileInBrowser(fileId: string) {
     try {
@@ -72,10 +45,9 @@ export default function FolderClient({
   async function handleDeleteFile(fileId: string) {
     if (!confirm("Are you sure you want to delete this file?")) return;
     await fetch(`/api/user/files/${fileId}/delete`, { method: "DELETE" });
-    await fetchData();
+    await refresh();
   }
 
-  // Upload a file (used by drop handler)
   async function uploadFileToCurrentFolder(file: File) {
     setUploading(true);
     try {
@@ -88,13 +60,12 @@ export default function FolderClient({
         alert(err?.error || "Upload failed");
         return;
       }
-      await fetchData();
+      await refresh();
     } finally {
       setUploading(false);
     }
   }
 
-  // Drag & drop handlers
   function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
@@ -112,20 +83,16 @@ export default function FolderClient({
     setIsDragging(false);
     const list = e.dataTransfer?.files;
     if (!list || list.length === 0) return;
-    // Upload the first file; extend to multi-file later if needed
     await uploadFileToCurrentFolder(list[0]);
   }
 
-  // Card grid like on Home page
   return (
     <div className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)]">
-      {/* Removed gradient overlays to use global theme */}
-
-          <div className="max-w-6xl mx-auto px-4 pt-4 flex justify-end">
+      <div className="max-w-6xl mx-auto px-4 pt-4 flex justify-end">
         <div className="relative">
           <button
             onClick={() => setNewOpen((v) => !v)}
-            className="flex items-center gap-2 px-3 py-2 rounded-md border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)] hover:bg-[color:var(--accent)]"
+            className="flex items-center gap-2 px-3 py-2.5 rounded-md border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)] hover:bg-[color:var(--accent)] transition-colors min-h-[44px]"
             aria-haspopup="menu"
             aria-expanded={newOpen}
           >
@@ -134,57 +101,58 @@ export default function FolderClient({
             <ChevronDownIcon className={`w-4 h-4 transition-transform ${newOpen ? "rotate-180" : ""}`} />
           </button>
           {newOpen && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-[color:var(--card)] border border-[color:var(--border)] rounded-md z-50">
-            
+            <div className="absolute right-0 top-full mt-2 w-48 bg-[color:var(--card)] border border-[color:var(--border)] rounded-md z-50 shadow-md">
               <button
                 onClick={() => { setShowUploadPanel(true); setNewOpen(false); }}
-                className="w-full text-left px-3 py-2 hover:bg-[color:var(--accent)]"
+                className="w-full text-left px-3 py-2.5 hover:bg-[color:var(--accent)] text-[color:var(--foreground)] min-h-[44px] flex items-center gap-2"
               >
-                ⬆️ Upload File
+                ⬆️ <span>Upload File</span>
               </button>
             </div>
           )}
         </div>
       </div>
+
       <div
-        className="relative z-10 max-w-7xl mx-auto px-6 py-8"
+        className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8"
         onDragOver={handleDragOver}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         {/* Breadcrumb */}
-        <nav className="mb-6 text-sm text-[color:var(--muted-foreground)]">
-          <Link href="/home" className="hover:text-[color:var(--foreground)]">Home</Link>
+        <nav className="mb-6 text-sm text-[color:var(--muted-foreground)] flex flex-wrap items-center gap-1">
+          <Link href="/home" className="hover:text-[color:var(--foreground)] transition-colors">Home</Link>
           {parent && (
             <>
-              <span className="mx-2">/</span>
-              <Link href={`/folders/${parent.id}`} className="hover:text-[color:var(--foreground)]">{parent.name}</Link>
+              <span>/</span>
+              <Link href={`/folders/${parent.id}`} className="hover:text-[color:var(--foreground)] transition-colors">{parent.name}</Link>
             </>
           )}
-          <span className="mx-2">/</span>
+          <span>/</span>
           <span className="font-medium text-[color:var(--foreground)]">{folderName}</span>
         </nav>
 
-        {/* Files list (no outer container) */}
+        {/* Files grid */}
         {loading ? (
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-12 rounded-lg bg-[color:var(--secondary)] border border-[color:var(--border)] animate-pulse" />
+              <div key={i} className="h-28 rounded-xl bg-[color:var(--secondary)] border border-[color:var(--border)] animate-pulse" />
             ))}
           </div>
-        ) : files.length === 0 ? (
-          <div className="text-sm text-[color:var(--muted-foreground)]">No files in this folder.</div>
+        ) : displayFiles.length === 0 ? (
+          <div className="text-center py-16">
+            <FolderPlusIcon className="w-12 h-12 mx-auto text-[color:var(--muted-foreground)]" />
+            <p className="text-[color:var(--muted-foreground)] mt-3">No files in this folder. Drop files here or click Upload.</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {files.map((file) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {displayFiles.map((file) => (
               <div key={file.id} className="group relative">
-                {/* Card */}
                 <div
                   className="block p-4 bg-[color:var(--card)] hover:bg-[color:var(--secondary)] rounded-xl border border-[color:var(--border)] transition-all duration-200 cursor-pointer"
                   onClick={() => openFileInBrowser(file.id)}
                 >
-                  {/* File Icon + Name */}
                   <div className="flex flex-col items-center text-center">
                     <div className="w-12 h-12 bg-[color:var(--secondary)] rounded-lg grid place-items-center mb-3 group-hover:scale-105 transition-transform">
                       <FileIcon className="w-6 h-6 text-[color:var(--foreground)]" />
@@ -194,25 +162,19 @@ export default function FolderClient({
                   </div>
                 </div>
 
-                {/* Floating Buttons (on hover) */}
+                {/* Hover actions */}
                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openFileInBrowser(file.id);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); openFileInBrowser(file.id); }}
                     title="Open"
-                    className="p-1.5 bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg transition-colors"
+                    className="p-1.5 bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
                   >
                     <EyeIcon className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteFile(file.id);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteFile(file.id); }}
                     title="Delete"
-                    className="p-1.5 bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg transition-colors"
+                    className="p-1.5 bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
                   >
                     <TrashIcon className="w-4 h-4" />
                   </button>
@@ -229,27 +191,33 @@ export default function FolderClient({
           <div className="absolute inset-0 bg-black/40" />
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="rounded-2xl border-2 border-dashed border-[color:var(--border)] bg-[color:var(--secondary)] px-8 py-6 text-center text-[color:var(--foreground)]">
-              <div className="text-sm">{uploading ? "Uploading..." : "Drop files to upload to this folder"}</div>
+              <div className="text-sm">{uploading ? "Uploading…" : "Drop files to upload to this folder"}</div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Upload Modal, opened via AppTopBar */}
+      {/* Upload modal */}
       {showUploadPanel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowUploadPanel(false)} />
-          <div className="relative z-10 w-full max-w-lg bg-[color:var(--card)] border border-[color:var(--border)] rounded-2xl p-6">
+          <div className="relative z-10 w-full sm:max-w-lg bg-[color:var(--card)] border border-[color:var(--border)] rounded-t-2xl sm:rounded-2xl p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Upload Files</h3>
-              <button onClick={() => setShowUploadPanel(false)} className="p-2 hover:bg-[color:var(--secondary)] rounded-lg transition-colors" aria-label="Close">×</button>
+              <h3 className="text-lg font-semibold text-[color:var(--foreground)]">Upload Files</h3>
+              <button
+                onClick={() => setShowUploadPanel(false)}
+                className="p-2 hover:bg-[color:var(--secondary)] rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center text-[color:var(--foreground)]"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
             <UploadSection
               folders={folders}
-              files={files}
+              files={displayFiles}
               loading={loading}
               defaultFolderId={folderId}
-              onFileUploaded={() => { setShowUploadPanel(false); fetchData(); }}
+              onFileUploaded={() => { setShowUploadPanel(false); refresh(); }}
             />
           </div>
         </div>
