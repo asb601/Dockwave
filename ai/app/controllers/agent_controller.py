@@ -1,40 +1,40 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-import os
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+from typing import Optional
 
 from app.agents.brain import BrainAgent
-from app.agents.tools import GraphSearchTool, VectorSearchTool, LLMTool,GetMeetingsTool,LLMRouterTool
+from app.core.container import get_registry
 
 router = APIRouter()
 
 
 class RunAgentRequest(BaseModel):
-    goal: str
-    user_email: str | None = None
-    max_iters: int = 4
-    min_hits: int = 6
+    goal: str = Field(..., min_length=1, description="The user's question or goal")
+    user_email: Optional[str] = Field(default=None, description="Authenticated user's email")
+    max_iters: int = Field(default=4, ge=1, le=10, description="Maximum RAG iterations")
+    min_hits: int = Field(default=6, ge=1, description="Minimum chunk hits before summarising")
 
 
 @router.post("/run")
 async def run_agent(req: RunAgentRequest):
-    # Build tools from env
-    neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-    neo4j_user = os.getenv("NEO4J_USERNAME", "neo4j")
-    neo4j_password = os.getenv("NEO4J_PASSWORD", "please-change-me")
-    api_base_url = os.getenv("ai_base_url", "http://localhost:8000")
-    print(req.user_email)
-  
-    tools = [
-        VectorSearchTool(uri=neo4j_uri, user=neo4j_user, password=neo4j_password),
-        GraphSearchTool(uri=neo4j_uri, user=neo4j_user, password=neo4j_password),
-        LLMTool(),
-       
-        GetMeetingsTool(api_base_url=api_base_url),
-        LLMRouterTool()
-    ]
-    print("calling brain agent  ")
-    brain = BrainAgent(tools)
-    out = await brain.run(req.goal, user_email=req.user_email, max_iters=req.max_iters, min_hits=req.min_hits)
-    return out
+    """
+    Execute the BrainAgent for the given goal.
+
+    Tools are resolved from the singleton ToolRegistry (built once from env
+    vars) rather than instantiated per-request, which avoids repeated
+    connection overhead.
+    """
+    registry = get_registry()
+    brain = BrainAgent(registry)
+    try:
+        result = await brain.run(
+            req.goal,
+            user_email=req.user_email,
+            max_iters=req.max_iters,
+            min_hits=req.min_hits,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Agent execution failed: {exc}") from exc
+    return result
