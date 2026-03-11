@@ -364,7 +364,7 @@ class BrainAgent:
 
     def _synthesize_answer(self, goal: str, chunks: List[Dict[str, Any]]) -> str:
         parts = [
-            f"- {c.get('file')}: {(c.get('text') or '')[:200].replace(chr(10), ' ')}"
+            f"- {c.get('file')}: {(c.get('text') or '')[:200].replace('\n', ' ')}"
             for c in chunks[:8]
         ]
         return "\n".join(
