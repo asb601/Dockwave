@@ -1,71 +1,92 @@
-// components/calendar/CalendarViews.tsx
-import React from 'react';
-import { CalendarEvent } from '@/types';
-import { getWeekDays, getMonthDays, isSameDay } from '@/utils/dateUtils';
-import { cn } from '@/utils/cn';
+"use client";
+
+import React from "react";
+import { cn } from "@/lib/cn";
+import { getWeekDays, getMonthDays, isSameDay } from "@/lib/dateUtils";
+import type { CalendarEvent, Month } from "@/types";
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Weekly View
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 interface WeeklyViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
-  onTimeSlotClick: (date: Date) => void;
+  onSlotClick: (date: Date) => void;
 }
 
-export const WeeklyView: React.FC<WeeklyViewProps> = ({ currentDate, events, onEventClick, onTimeSlotClick }) => {
-  const weekDays = getWeekDays(currentDate);
-  const hours = Array.from({ length: 24 }, (_, i) => i);
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  const getEventsForTimeSlot = (day: Date, hour: number) => {
-    return events.filter((event) => {
-      const eventStart = new Date(event.start);
-      return isSameDay(eventStart, day) && eventStart.getHours() === hour;
+export const WeeklyView: React.FC<WeeklyViewProps> = ({
+  currentDate,
+  events,
+  onEventClick,
+  onSlotClick,
+}) => {
+  const days = getWeekDays(currentDate);
+  const today = new Date();
+
+  const getEventsForSlot = (day: Date, hour: number) =>
+    events.filter((e) => {
+      const start = new Date(e.start);
+      return isSameDay(start, day) && start.getHours() === hour;
     });
-  };
 
   return (
-    <div className="bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg overflow-hidden shadow-sm">
-      <div className="grid grid-cols-8 border-b border-[color:var(--border)] bg-[color:var(--secondary)]/50">
-        <div className="p-3 text-sm font-medium text-[color:var(--muted-foreground)]">Time</div>
-        {weekDays.map((day, i) => (
-          <div key={i} className="p-3 text-center border-l border-[color:var(--border)]">
-            <div className="text-sm font-medium text-[color:var(--foreground)]">
-              {day.toLocaleDateString('en-US', { weekday: 'short' })}
+    <div className="overflow-auto no-scrollbar rounded-xl border border-border">
+      <div className="min-w-[720px]">
+        {/* header */}
+        <div className="grid grid-cols-8 border-b border-border bg-muted/30">
+          <div className="p-2 text-xs font-medium text-muted-foreground" />
+          {days.map((day, i) => (
+            <div
+              key={i}
+              className={cn(
+                "p-2 text-center text-xs font-medium",
+                isSameDay(day, today)
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground"
+              )}
+            >
+              <span className="block">{DAY_LABELS[day.getDay()]}</span>
+              <span className="text-lg leading-tight">{day.getDate()}</span>
             </div>
-            <div className={cn(
-              "text-lg mt-1",
-              isSameDay(day, new Date()) && "text-primary font-bold"
-            )}>
-              {day.getDate()}
+          ))}
+        </div>
+
+        {/* body */}
+        {HOURS.map((hour) => (
+          <div key={hour} className="grid grid-cols-8 border-b border-border last:border-b-0">
+            <div className="flex items-start justify-end p-2 pr-3 text-[11px] text-muted-foreground">
+              {hour === 0 ? "12 AM" : hour < 12 ? `${hour} AM` : hour === 12 ? "12 PM" : `${hour - 12} PM`}
             </div>
-          </div>
-        ))}
-      </div>
-      <div className="overflow-y-auto max-h-[600px]">
-        {hours.map(hour => (
-          <div key={hour} className="grid grid-cols-8 border-b border-[color:var(--border)] hover:bg-[color:var(--accent)]/50 transition-colors">
-            <div className="p-3 text-sm text-[color:var(--muted-foreground)] border-r border-[color:var(--border)]">
-              {hour.toString().padStart(2, '0')}:00
-            </div>
-            {weekDays.map((day, i) => {
-              const slotEvents = getEventsForTimeSlot(day, hour);
+
+            {days.map((day, di) => {
+              const slotEvents = getEventsForSlot(day, hour);
               return (
                 <div
-                  key={i}
-                  className="p-1 border-l border-[color:var(--border)] min-h-[60px] cursor-pointer hover:bg-[color:var(--accent)]/30 transition-colors"
-                  onClick={() => onTimeSlotClick(new Date(day.setHours(hour, 0)))}
+                  key={di}
+                  className="relative min-h-[3rem] border-l border-border p-0.5 hover:bg-muted/30 transition-colors cursor-pointer"
+                  onClick={() => {
+                    const d = new Date(day);
+                    d.setHours(hour, 0, 0, 0);
+                    onSlotClick(d);
+                  }}
                 >
-                  {slotEvents.map(event => (
-                    <div
-                      key={event.id}
-                      className="text-xs p-2 mb-1 rounded text-white cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
-                      style={{ backgroundColor: event.color }}
+                  {slotEvents.map((ev) => (
+                    <button
+                      key={ev.id}
+                      className="w-full rounded px-1.5 py-0.5 text-left text-[11px] font-medium text-white truncate mb-0.5"
+                      style={{ backgroundColor: ev.color || "#3b82f6" }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onEventClick(event);
+                        onEventClick(ev);
                       }}
                     >
-                      {event.title}
-                    </div>
+                      {ev.title}
+                    </button>
                   ))}
                 </div>
               );
@@ -77,6 +98,10 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({ currentDate, events, onE
   );
 };
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Monthly View
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
 interface MonthlyViewProps {
   currentDate: Date;
   events: CalendarEvent[];
@@ -84,59 +109,74 @@ interface MonthlyViewProps {
   onDayClick: (date: Date) => void;
 }
 
-export const MonthlyView: React.FC<MonthlyViewProps> = ({ currentDate, events, onEventClick, onDayClick }) => {
-  const monthDays = getMonthDays(currentDate);
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  const getEventsForDay = (day: Date) => {
-    return events.filter((event) => isSameDay(new Date(event.start), day));
-  };
+export const MonthlyView: React.FC<MonthlyViewProps> = ({
+  currentDate,
+  events,
+  onEventClick,
+  onDayClick,
+}) => {
+  const days = getMonthDays(currentDate);
+  const today = new Date();
+
+  const getEventsForDay = (date: Date) =>
+    events.filter((e) => isSameDay(new Date(e.start), date));
 
   return (
-    <div className="bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg overflow-hidden shadow-sm">
-      <div className="grid grid-cols-7 border-b border-[color:var(--border)] bg-[color:var(--secondary)]/50">
-        {weekDays.map(day => (
-          <div key={day} className="p-3 text-center text-sm font-medium text-[color:var(--foreground)]">
-            {day}
+    <div className="rounded-xl border border-border overflow-hidden">
+      {/* header */}
+      <div className="grid grid-cols-7 bg-muted/30">
+        {WEEKDAY_LABELS.map((d) => (
+          <div key={d} className="p-1.5 sm:p-2 text-center text-[10px] sm:text-xs font-medium text-muted-foreground">
+            <span className="sm:hidden">{d[0]}</span>
+            <span className="hidden sm:inline">{d}</span>
           </div>
         ))}
       </div>
+
+      {/* days grid */}
       <div className="grid grid-cols-7">
-        {monthDays.map(({ date, isCurrentMonth }, i) => {
+        {days.map(({ date, isCurrentMonth }, i) => {
           const dayEvents = getEventsForDay(date);
-          const isToday = isSameDay(date, new Date());
-          
+          const isToday = isSameDay(date, today);
+
           return (
             <div
               key={i}
               className={cn(
-                "min-h-[100px] p-2 border-b border-r border-[color:var(--border)] cursor-pointer hover:bg-[color:var(--accent)]/50 transition-colors",
-                !isCurrentMonth && "bg-[color:var(--secondary)]/30 text-[color:var(--muted-foreground)]"
+                "min-h-[3.5rem] sm:min-h-[5.5rem] border-t border-l border-border p-1 sm:p-1.5 transition-colors cursor-pointer hover:bg-muted/30",
+                !isCurrentMonth && "bg-muted/10 text-muted-foreground"
               )}
               onClick={() => onDayClick(date)}
             >
-              <div className={cn(
-                "text-sm mb-1 inline-flex items-center justify-center",
-                isToday && "bg-primary text-primary-foreground rounded-full w-7 h-7 font-bold"
-              )}>
+              <span
+                className={cn(
+                  "inline-flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full text-[10px] sm:text-xs font-medium",
+                  isToday && "bg-primary text-primary-foreground font-bold"
+                )}
+              >
                 {date.getDate()}
-              </div>
-              <div className="space-y-1">
-                {dayEvents.slice(0, 3).map(event => (
-                  <div
-                    key={event.id}
-                    className="text-xs p-1.5 rounded text-white truncate cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
-                    style={{ backgroundColor: event.color }}
+              </span>
+
+              <div className="mt-0.5 sm:mt-1 space-y-0.5">
+                {dayEvents.slice(0, 2).map((ev) => (
+                  <button
+                    key={ev.id}
+                    className="w-full truncate rounded px-1 sm:px-1.5 py-0.5 text-left text-[9px] sm:text-[11px] font-medium text-white"
+                    style={{ backgroundColor: ev.color || "#3b82f6" }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onEventClick(event);
+                      onEventClick(ev);
                     }}
                   >
-                    {event.title}
-                  </div>
+                    {ev.title}
+                  </button>
                 ))}
-                {dayEvents.length > 3 && (
-                  <div className="text-xs text-muted-foreground pl-1">+{dayEvents.length - 3} more</div>
+                {dayEvents.length > 2 && (
+                  <p className="px-1 text-[9px] sm:text-[10px] text-muted-foreground">
+                    +{dayEvents.length - 2} more
+                  </p>
                 )}
               </div>
             </div>
@@ -147,60 +187,72 @@ export const MonthlyView: React.FC<MonthlyViewProps> = ({ currentDate, events, o
   );
 };
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Yearly View
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
 interface YearlyViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onMonthClick: (date: Date) => void;
 }
 
-export const YearlyView: React.FC<YearlyViewProps> = ({ currentDate, events, onMonthClick }) => {
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const date = new Date(currentDate.getFullYear(), i, 1);
-    return {
-      name: date.toLocaleDateString('en-US', { month: 'long' }),
-      date: date
-    };
-  });
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
-  const getEventsForMonth = (month: number) => {
-    return events.filter((event) => {
-      const eventDate = new Date(event.start);
-      return eventDate.getFullYear() === currentDate.getFullYear() && 
-             eventDate.getMonth() === month;
-    });
-  };
+export const YearlyView: React.FC<YearlyViewProps> = ({
+  currentDate,
+  events,
+  onMonthClick,
+}) => {
+  const year = currentDate.getFullYear();
+  const today = new Date();
+
+  const months: Month[] = MONTH_NAMES.map((name, i) => ({
+    name,
+    date: new Date(year, i, 1),
+  }));
+
+  const getEventCountForMonth = (month: number) =>
+    events.filter((e) => {
+      const d = new Date(e.start);
+      return d.getMonth() === month && d.getFullYear() === year;
+    }).length;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {months.map((month, i) => {
-        const monthEvents = getEventsForMonth(i);
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      {months.map((m, i) => {
+        const count = getEventCountForMonth(i);
+        const isCurrentMonth =
+          today.getMonth() === i && today.getFullYear() === year;
+
         return (
-          <div
-            key={i}
-            className="bg-[color:var(--card)] border border-[color:var(--border)] rounded-lg p-4 cursor-pointer hover:shadow-lg hover:border-[color:var(--ring)] transition-all"
-            onClick={() => onMonthClick(month.date)}
+          <button
+            key={m.name}
+            onClick={() => onMonthClick(m.date)}
+            className={cn(
+              "card-padded text-left transition-all hover:ring-2 hover:ring-primary/30",
+              isCurrentMonth && "ring-2 ring-primary"
+            )}
           >
-            <h3 className="font-semibold text-lg mb-3 text-[color:var(--foreground)]">{month.name}</h3>
-            <div className="space-y-2">
-              {monthEvents.slice(0, 5).map(event => (
-                <div
-                  key={event.id}
-                  className="text-xs p-2 rounded text-white shadow-sm"
-                  style={{ backgroundColor: event.color }}
-                >
-                  {new Date(event.start).getDate()} - {event.title}
-                </div>
-              ))}
-              {monthEvents.length > 5 && (
-                <div className="text-xs text-muted-foreground pl-2">
-                  +{monthEvents.length - 5} more events
-                </div>
+            <h3
+              className={cn(
+                "text-sm font-semibold",
+                isCurrentMonth ? "text-primary" : "text-foreground"
               )}
-              {monthEvents.length === 0 && (
-                <div className="text-xs text-muted-foreground pl-2">No events</div>
-              )}
-            </div>
-          </div>
+            >
+              {m.name}
+            </h3>
+            {count > 0 ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {count} event{count !== 1 ? "s" : ""}
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground/50">No events</p>
+            )}
+          </button>
         );
       })}
     </div>

@@ -1,4 +1,3 @@
-// Updated HomeClient Component with improved folder/file grid UI
 "use client";
 
 import { useState } from "react";
@@ -16,7 +15,7 @@ import {
 import { useFilesAndFolders } from "@/hooks/useFilesAndFolders";
 import type { FileItem, Folder } from "@/types";
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+/* ── Create Folder Form ────────────────────────────────────────────────────── */
 
 function CreateFolderForm({
   folders,
@@ -57,38 +56,45 @@ function CreateFolderForm({
   }
 
   return (
-    <div className="p-4 border border-[color:var(--border)] rounded-lg bg-[color:var(--card)] mb-6">
+    <div className="card card-padded mb-6">
       <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
         <FolderPlusIcon className="w-5 h-5" /> Create Folder
       </h3>
+
       <div className="flex flex-col sm:flex-row gap-3">
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Folder name"
-          className="flex-1 border border-[color:var(--border)] bg-[color:var(--background)] p-2.5 rounded-md text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--ring)] min-h-[44px]"
+          className="input flex-1"
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
         />
 
-        {/* Parent folder selector */}
+        {/* Parent selector */}
         <div className="relative sm:w-52">
           <button
             type="button"
-            className="border border-[color:var(--border)] bg-[color:var(--background)] text-[color:var(--foreground)] p-2.5 rounded-md w-full flex justify-between items-center min-h-[44px]"
+            className="btn btn-outline w-full justify-between"
             onClick={() => setSelectOpen((v) => !v)}
           >
             <span className="truncate">
-              {parentId ? folders.find((f) => f.id === parentId)?.name : "Root Directory"}
+              {parentId
+                ? folders.find((f) => f.id === parentId)?.name
+                : "Root Directory"}
             </span>
             <ChevronDownIcon className="w-4 h-4 shrink-0 ml-2" />
           </button>
+
           {selectOpen && (
-            <div className="absolute left-0 right-0 top-full mt-1 border border-[color:var(--border)] bg-[color:var(--card)] rounded-md z-10 max-h-48 overflow-y-auto shadow-md">
+            <div className="dropdown left-0 right-0 max-h-48 overflow-y-auto">
               <button
                 type="button"
-                className="block w-full px-3 py-2.5 text-left hover:bg-[color:var(--accent)] text-[color:var(--foreground)] min-h-[44px]"
-                onClick={() => { setParentId(null); setSelectOpen(false); }}
+                className="dropdown-item"
+                onClick={() => {
+                  setParentId(null);
+                  setSelectOpen(false);
+                }}
               >
                 Root Directory
               </button>
@@ -96,8 +102,11 @@ function CreateFolderForm({
                 <button
                   key={f.id}
                   type="button"
-                  className="block w-full px-3 py-2.5 text-left hover:bg-[color:var(--accent)] text-[color:var(--foreground)] min-h-[44px]"
-                  onClick={() => { setParentId(f.id); setSelectOpen(false); }}
+                  className="dropdown-item"
+                  onClick={() => {
+                    setParentId(f.id);
+                    setSelectOpen(false);
+                  }}
                 >
                   {f.name}
                 </button>
@@ -107,15 +116,16 @@ function CreateFolderForm({
         </div>
 
         <button
-          className="px-4 py-2.5 rounded-md bg-[color:var(--primary)] text-[color:var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 transition-opacity min-h-[44px]"
+          className="btn btn-primary"
           disabled={creating || !name.trim()}
           onClick={handleCreate}
         >
-          {creating ? "Creating…" : "Create"}
+          {creating ? "Creating\u2026" : "Create"}
         </button>
+
         <button
           type="button"
-          className="px-4 py-2.5 rounded-md border border-[color:var(--border)] text-[color:var(--foreground)] hover:bg-[color:var(--accent)] transition-colors min-h-[44px]"
+          className="btn btn-outline"
           onClick={onCancel}
         >
           Cancel
@@ -125,19 +135,27 @@ function CreateFolderForm({
   );
 }
 
-function FolderCard({ folder, onDelete }: { folder: Folder; onDelete: (id: string) => void }) {
+/* ── Folder Card ───────────────────────────────────────────────────────────── */
+
+function FolderCard({
+  folder,
+  onDelete,
+}: {
+  folder: Folder;
+  onDelete: (id: string) => void;
+}) {
   return (
-    <div className="group border border-[color:var(--border)] rounded-xl p-4 sm:p-5 bg-[color:var(--card)] hover:bg-[color:var(--accent)] transition relative">
-      <Link href={`/folders/${folder.id}`}>
+    <div className="group card hover:bg-accent transition relative">
+      <Link href={`/folders/${folder.id}`} className="p-4 sm:p-5 block">
         <div className="flex flex-col items-center text-center">
-          <FolderIcon className="w-10 h-10 mb-3 text-[color:var(--foreground)]" />
-          <p className="font-semibold truncate w-full text-[color:var(--foreground)]">{folder.name}</p>
-          <p className="text-xs text-[color:var(--muted-foreground)] mt-1">Folder</p>
+          <FolderIcon className="w-10 h-10 mb-3" />
+          <p className="font-semibold truncate w-full">{folder.name}</p>
+          <p className="text-xs text-muted-foreground mt-1">Folder</p>
         </div>
       </Link>
       <button
         onClick={() => onDelete(folder.id)}
-        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-[color:var(--destructive)] p-1 min-h-[32px] min-w-[32px] flex items-center justify-center"
+        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-destructive p-1"
         aria-label={`Delete folder ${folder.name}`}
       >
         <MoreVertical className="w-4 h-4" />
@@ -145,6 +163,8 @@ function FolderCard({ folder, onDelete }: { folder: Folder; onDelete: (id: strin
     </div>
   );
 }
+
+/* ── File Card ─────────────────────────────────────────────────────────────── */
 
 function FileCard({
   file,
@@ -156,20 +176,22 @@ function FileCard({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="group border border-[color:var(--border)] rounded-xl p-4 sm:p-5 bg-[color:var(--card)] hover:bg-[color:var(--accent)] transition relative">
+    <div className="group card hover:bg-accent transition relative">
       <div
-        className="flex flex-col items-center text-center cursor-pointer"
+        className="p-4 sm:p-5 cursor-pointer"
         onClick={() => onOpen(file.id)}
       >
-        <FileIcon className="w-10 h-10 mb-3 text-[color:var(--foreground)]" />
-        <p className="font-semibold truncate w-full text-[color:var(--foreground)]">{file.name}</p>
-        <p className="text-xs text-[color:var(--muted-foreground)] mt-1">
-          {new Date(file.createdAt).toLocaleDateString()}
-        </p>
+        <div className="flex flex-col items-center text-center">
+          <FileIcon className="w-10 h-10 mb-3" />
+          <p className="font-semibold truncate w-full">{file.name}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {new Date(file.createdAt).toLocaleDateString()}
+          </p>
+        </div>
       </div>
       <button
         onClick={() => onDelete(file.id)}
-        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-[color:var(--destructive)] p-1 min-h-[32px] min-w-[32px] flex items-center justify-center"
+        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-destructive p-1"
         aria-label={`Delete file ${file.name}`}
       >
         <MoreVertical className="w-4 h-4" />
@@ -178,16 +200,18 @@ function FileCard({
   );
 }
 
+/* ── Empty State ───────────────────────────────────────────────────────────── */
+
 function EmptyWorkspace({ onCreateFolder }: { onCreateFolder: () => void }) {
   return (
     <div className="text-center py-16 sm:py-20">
-      <FolderIcon className="w-12 h-12 mx-auto text-[color:var(--muted-foreground)]" />
-      <h3 className="text-xl font-semibold mt-4 text-[color:var(--foreground)]">Your workspace is empty</h3>
-      <p className="text-[color:var(--muted-foreground)] mt-2">
+      <FolderIcon className="w-12 h-12 mx-auto text-muted-foreground" />
+      <h3 className="text-xl font-semibold mt-4">Your workspace is empty</h3>
+      <p className="text-muted-foreground mt-2">
         Create a folder or upload files to get started.
       </p>
       <button
-        className="mt-6 px-6 py-3 rounded-md bg-[color:var(--primary)] text-[color:var(--primary-foreground)] hover:opacity-90 transition-opacity min-h-[44px]"
+        className="btn btn-primary mt-6"
         onClick={onCreateFolder}
       >
         Create your first folder
@@ -195,6 +219,8 @@ function EmptyWorkspace({ onCreateFolder }: { onCreateFolder: () => void }) {
     </div>
   );
 }
+
+/* ── Upload Modal ──────────────────────────────────────────────────────────── */
 
 function UploadModal({
   folders,
@@ -210,16 +236,12 @@ function UploadModal({
   onUploaded: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="modal-sheet-backdrop">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-full sm:max-w-lg bg-[color:var(--card)] p-6 rounded-t-2xl sm:rounded-2xl border border-[color:var(--border)] shadow-xl">
+      <div className="modal-sheet">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-[color:var(--foreground)]">Upload Files</h3>
-          <button
-            className="p-2 hover:bg-[color:var(--secondary)] rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center text-[color:var(--foreground)]"
-            onClick={onClose}
-            aria-label="Close"
-          >
+          <h3 className="text-lg font-semibold">Upload Files</h3>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -227,14 +249,17 @@ function UploadModal({
           folders={folders}
           files={files}
           loading={loading}
-          onFileUploaded={() => { onClose(); onUploaded(); }}
+          onFileUploaded={() => {
+            onClose();
+            onUploaded();
+          }}
         />
       </div>
     </div>
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+/* ── HomeClient ────────────────────────────────────────────────────────────── */
 
 export default function HomeClient() {
   const { folders, files, loading, refresh } = useFilesAndFolders();
@@ -243,7 +268,7 @@ export default function HomeClient() {
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
 
-  async function openFileInBrowser(fileId: string) {
+  async function openFile(fileId: string) {
     try {
       const res = await fetch(`/api/user/files/${fileId}/presign`);
       if (!res.ok) return alert("Failed to open file");
@@ -271,40 +296,49 @@ export default function HomeClient() {
   const hasContent = rootFolders.length > 0 || rootFiles.length > 0;
 
   const filteredFolders = rootFolders.filter((f) =>
-    f.name.toLowerCase().includes(searchQuery.toLowerCase())
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
   const filteredFiles = rootFiles.filter((f) =>
-    f.name.toLowerCase().includes(searchQuery.toLowerCase())
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
-    <div className="min-h-screen">
-      {/* Page header */}
-      <div className="max-w-6xl mx-auto px-4 pt-4 flex justify-end">
+    <div className="h-full overflow-y-auto">
+      {/* Actions bar */}
+      <div className="page-container pt-4 flex justify-end">
         <div className="relative">
           <button
             onClick={() => setNewOpen((v) => !v)}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-md border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)] hover:bg-[color:var(--accent)] transition-colors min-h-[44px]"
+            className="btn btn-outline"
             aria-haspopup="menu"
             aria-expanded={newOpen}
           >
             <PlusIcon className="w-4 h-4" />
             <span>New</span>
             <ChevronDownIcon
-              className={`w-4 h-4 transition-transform ${newOpen ? "rotate-180" : ""}`}
+              className={`w-4 h-4 transition-transform ${
+                newOpen ? "rotate-180" : ""
+              }`}
             />
           </button>
+
           {newOpen && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-[color:var(--card)] border border-[color:var(--border)] rounded-md z-50 shadow-md">
+            <div className="dropdown">
               <button
-                onClick={() => { setShowCreateForm(true); setNewOpen(false); }}
-                className="w-full text-left px-3 py-2.5 hover:bg-[color:var(--accent)] text-[color:var(--foreground)] min-h-[44px] flex items-center gap-2"
+                onClick={() => {
+                  setShowCreateForm(true);
+                  setNewOpen(false);
+                }}
+                className="dropdown-item"
               >
                 📁 <span>Create Folder</span>
               </button>
               <button
-                onClick={() => { setShowUploadPanel(true); setNewOpen(false); }}
-                className="w-full text-left px-3 py-2.5 hover:bg-[color:var(--accent)] text-[color:var(--foreground)] min-h-[44px] flex items-center gap-2"
+                onClick={() => {
+                  setShowUploadPanel(true);
+                  setNewOpen(false);
+                }}
+                className="dropdown-item"
               >
                 ⬆️ <span>Upload File</span>
               </button>
@@ -313,24 +347,24 @@ export default function HomeClient() {
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        {/* Loading skeleton */}
+      <main className="page-container py-6 max-w-6xl">
+        {/* Loading */}
         {loading && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                className="h-28 rounded-xl bg-[color:var(--secondary)] border border-[color:var(--border)] animate-pulse"
-              />
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-28 skeleton" />
             ))}
           </div>
         )}
 
-        {/* Folder creation form */}
+        {/* Create folder form */}
         {!loading && showCreateForm && (
           <CreateFolderForm
             folders={folders}
-            onCreated={() => { setShowCreateForm(false); refresh(); }}
+            onCreated={() => {
+              setShowCreateForm(false);
+              refresh();
+            }}
             onCancel={() => setShowCreateForm(false)}
           />
         )}
@@ -342,7 +376,7 @@ export default function HomeClient() {
 
         {/* Content grid */}
         {!loading && hasContent && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {filteredFolders.map((folder) => (
               <FolderCard
                 key={folder.id}
@@ -354,7 +388,7 @@ export default function HomeClient() {
               <FileCard
                 key={file.id}
                 file={file}
-                onOpen={openFileInBrowser}
+                onOpen={openFile}
                 onDelete={handleDeleteFile}
               />
             ))}
@@ -375,4 +409,3 @@ export default function HomeClient() {
     </div>
   );
 }
-

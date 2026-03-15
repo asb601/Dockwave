@@ -3,21 +3,22 @@
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu } from "lucide-react";
-import Sidebar from "@/utils/Sidebar";
+import Sidebar from "@/components/layout/Sidebar";
 
+/** Conditionally renders Sidebar on authenticated routes only. */
 export default function SidebarGate() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  if (!pathname || pathname === "/" || pathname === "/login") return null;
+  const hiddenRoutes = ["/", "/login"];
+  if (!pathname || hiddenRoutes.includes(pathname)) return null;
 
   return (
     <>
-      {/* Mobile hamburger button – only visible on small screens */}
       <button
         aria-label="Open menu"
         onClick={() => setMobileOpen(true)}
-        className="fixed top-3 left-3 z-30 grid place-items-center h-10 w-10 rounded-md border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)] md:hidden shadow-sm"
+        className="btn-icon fixed top-3 left-3 z-30 h-10 w-10 shadow-sm md:hidden"
       >
         <Menu className="h-5 w-5" />
       </button>

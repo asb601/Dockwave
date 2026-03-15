@@ -3,16 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type ApiErrorResponse = { error?: string };
-
-const parseErrorResponse = async (res: Response): Promise<ApiErrorResponse> => {
-  try {
-    return await res.json();
-  } catch {
-    return {};
-  }
-};
-
 export default function FolderUpload({ folderId }: { folderId: string }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
@@ -32,8 +22,8 @@ export default function FolderUpload({ folderId }: { folderId: string }) {
       });
 
       if (!res.ok) {
-        const err = await parseErrorResponse(res);
-        alert(err.error || "Upload failed");
+        const err = await res.json().catch(() => ({} as { error?: string }));
+        alert(err?.error || "Upload failed");
         return;
       }
 
@@ -47,20 +37,22 @@ export default function FolderUpload({ folderId }: { folderId: string }) {
   return (
     <div className="space-y-4">
       <div>
-        <label className="mb-2 block text-sm font-medium">Add file</label>
+        <label className="label">Add file</label>
         <input
           type="file"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="block w-full text-sm text-[color:var(--foreground)] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border file:border-[color:var(--border)] file:text-sm file:font-medium file:bg-[color:var(--card)] file:text-[color:var(--foreground)] hover:file:bg-[color:var(--accent)]"
+          className="input-file w-full"
         />
-        <p className="mt-2 text-xs text-[color:var(--muted-foreground)]">Max 10MB. PDF, TXT, DOCX supported.</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Max 10MB. PDF, TXT, DOCX supported.
+        </p>
       </div>
       <button
         onClick={handleUpload}
         disabled={!file || uploading}
-        className="inline-flex w-full items-center justify-center rounded-lg bg-[color:var(--primary)] px-4 py-2 text-sm font-medium text-[color:var(--primary-foreground)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        className="btn btn-primary w-full"
       >
-        {uploading ? "Uploading…" : "Upload to this folder"}
+        {uploading ? "Uploading\u2026" : "Upload to this folder"}
       </button>
     </div>
   );

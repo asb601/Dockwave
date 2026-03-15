@@ -2,36 +2,57 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SendIcon } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+/* ── Empty State ───────────────────────────────────────────────────────────── */
 
 function EmptyState() {
   return (
-    <div className="h-64 grid place-items-center text-[color:var(--muted-foreground)] text-sm">
-      Ask anything…
+    <div className="flex-1 grid place-items-center text-muted-foreground text-sm">
+      Ask anything about your documents&hellip;
     </div>
   );
 }
+
+/* ── Message Bubble ────────────────────────────────────────────────────────── */
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
+
   return (
-    <div className={`w-fit max-w-[85vw] sm:max-w-[72ch] lg:max-w-[80ch] rounded-2xl px-4 py-2.5 text-sm lg:text-base leading-relaxed ${
-      isUser
-        ? "ml-auto bg-[color:var(--primary)] text-[color:var(--primary-foreground)]"
-        : "bg-[color:var(--card)] border border-[color:var(--border)] text-[color:var(--foreground)]"
-    }`}>
-      {message.content}
+    <div
+      className={`w-fit max-w-[85vw] sm:max-w-[72ch] lg:max-w-[80ch] rounded-2xl px-4 py-2.5 text-sm lg:text-base leading-relaxed ${
+        isUser
+          ? "ml-auto bg-primary text-primary-foreground"
+          : "card card-padded"
+      }`}
+    >
+      {isUser ? (
+        message.content
+      ) : (
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {message.content}
+        </ReactMarkdown>
+      )}
     </div>
   );
 }
 
-function MessageList({ messages, endRef }: { messages: Message[]; endRef: React.RefObject<HTMLDivElement | null> }) {
+/* ── Message List ──────────────────────────────────────────────────────────── */
+
+function MessageList({
+  messages,
+  endRef,
+}: {
+  messages: Message[];
+  endRef: React.RefObject<HTMLDivElement | null>;
+}) {
   return (
     <div className="mx-auto px-3 sm:px-4 py-6 max-w-3xl lg:max-w-4xl xl:max-w-5xl">
       {messages.length === 0 ? (
@@ -39,9 +60,7 @@ function MessageList({ messages, endRef }: { messages: Message[]; endRef: React.
       ) : (
         <div className="space-y-4">
           {messages.map((m, idx) => (
-            <div key={idx}>
-              <MessageBubble message={m} />
-            </div>
+            <MessageBubble key={idx} message={m} />
           ))}
           <div ref={endRef} />
         </div>
@@ -49,6 +68,8 @@ function MessageList({ messages, endRef }: { messages: Message[]; endRef: React.
     </div>
   );
 }
+
+/* ── Chat Input ────────────────────────────────────────────────────────────── */
 
 function ChatInput({
   inputRef,
@@ -60,32 +81,31 @@ function ChatInput({
   sending: boolean;
 }) {
   return (
-    <form
-      onSubmit={onSubmit}
-      className="border-t border-[color:var(--border)] bg-[color:var(--background)]/95 backdrop-blur"
-    >
+    <form onSubmit={onSubmit} className="border-t border-border bg-background/95 backdrop-blur">
       <div className="mx-auto px-3 sm:px-4 py-3 sm:py-4 flex gap-2 max-w-3xl lg:max-w-4xl xl:max-w-5xl">
         <input
           ref={inputRef}
           type="text"
           placeholder="Send a message"
-          className="flex-1 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3 text-sm lg:text-base text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--ring)] min-h-[44px]"
+          className="input flex-1 rounded-xl px-4 py-3 text-sm lg:text-base"
         />
         <button
           type="submit"
           disabled={sending}
           aria-label="Send message"
-          className="px-4 py-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--primary)] text-[color:var(--primary-foreground)] text-sm lg:text-base disabled:opacity-60 hover:opacity-90 transition-opacity min-h-[44px] min-w-[44px] flex items-center justify-center gap-2"
+          className="btn btn-primary rounded-xl px-4 py-3"
         >
           <SendIcon className="w-4 h-4" />
-          <span className="hidden sm:inline">{sending ? "Sending…" : "Send"}</span>
+          <span className="hidden sm:inline">
+            {sending ? "Sending\u2026" : "Send"}
+          </span>
         </button>
       </div>
     </form>
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+/* ── Main ChatClient ───────────────────────────────────────────────────────── */
 
 export default function ChatClient() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -133,8 +153,8 @@ export default function ChatClient() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)]">
-      <div className="flex-1 overflow-y-auto">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto no-scrollbar">
         <MessageList messages={messages} endRef={endRef} />
       </div>
       <ChatInput inputRef={inputRef} onSubmit={onSubmit} sending={sending} />

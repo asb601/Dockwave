@@ -1,4 +1,3 @@
-// app/auth/login/page.tsx
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -9,10 +8,10 @@ export default async function LoginPage() {
   if (session) redirect("/home");
 
   return (
-    <main className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
-      <div className="bg-card text-card-foreground border border-border rounded-2xl p-8 w-full max-w-md shadow-sm">
+    <main className="h-full flex items-center justify-center px-4">
+      <div className="card card-padded w-full max-w-md">
         <h1 className="text-2xl font-bold mb-6 text-center">
-          Login to IntelliDoc
+          Login to Papermind
         </h1>
         <LoginCard />
       </div>

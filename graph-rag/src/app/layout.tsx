@@ -1,22 +1,30 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { headers } from "next/headers";
-import AppNav from "@/utils/AppNav";
-import SidebarGate from "@/utils/SidebarGate";
+import AppNav from "@/components/layout/AppNav";
+import SidebarGate from "@/components/layout/SidebarGate";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const sans = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const display = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
+  variable: "--font-jetbrains",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "IntelliDoc",
+  title: "Papermind",
   description: "Docs + Chat + Calendar",
 };
 
@@ -29,11 +37,12 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <div className="flex min-h-dvh">
-          {/* Sidebar decided on the client to avoid header/pathname mismatches */}
+      <body
+        className={`${sans.variable} ${display.variable} ${mono.variable} font-sans antialiased overflow-x-hidden`}
+      >
+        <div className="flex h-dvh overflow-hidden">
           <SidebarGate />
-          <main className="flex-1 min-w-0 pt-14 md:pt-0">
+          <main className="flex-1 min-w-0 overflow-y-auto pt-14 md:pt-0">
             {isLanding && <AppNav />}
             {children}
           </main>
