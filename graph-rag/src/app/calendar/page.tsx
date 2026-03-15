@@ -258,7 +258,7 @@ export default function PersonalCalendarApp() {
   return (
     <div className="page-container px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* ── Top bar ────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3 justify-between">
+      <div className="flex items-center gap-2 justify-between">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Calendar</h1>
 
         <div className="flex items-center gap-2">
@@ -268,7 +268,7 @@ export default function PersonalCalendarApp() {
               <button
                 key={value}
                 onClick={() => setView(value)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors ${
                   view === value
                     ? "bg-primary text-primary-foreground"
                     : "bg-card text-muted-foreground hover:text-foreground"
@@ -288,7 +288,7 @@ export default function PersonalCalendarApp() {
                 data: view === "calendar" ? { start: new Date(), end: new Date() } : {},
               })
             }
-            className="btn btn-primary gap-1.5"
+            className="btn btn-primary gap-1.5 text-xs sm:text-sm"
           >
             <Plus size={16} />
             <span className="hidden sm:inline">
@@ -300,7 +300,7 @@ export default function PersonalCalendarApp() {
 
       {/* ── Calendar controls ────────────────────────────────────────── */}
       {view === "calendar" && (
-        <div className="flex flex-wrap items-center gap-3 justify-between">
+        <div className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-3">
           {/* nav arrows + label */}
           <div className="flex items-center gap-1 sm:gap-2">
             <button
@@ -309,7 +309,7 @@ export default function PersonalCalendarApp() {
             >
               <ChevronLeft size={18} />
             </button>
-            <h2 className="min-w-0 text-center text-xs sm:text-sm font-semibold whitespace-nowrap">
+            <h2 className="min-w-0 flex-1 text-center text-xs sm:text-sm font-semibold whitespace-nowrap">
               {headerLabel(currentDate, calendarView)}
             </h2>
             <button
@@ -327,12 +327,12 @@ export default function PersonalCalendarApp() {
           </div>
 
           {/* view switcher */}
-          <div className="flex rounded-lg border border-border overflow-hidden">
+          <div className="flex rounded-lg border border-border overflow-hidden w-full sm:w-auto">
             {CAL_VIEWS.map((v) => (
               <button
                 key={v}
                 onClick={() => setCalendarView(v)}
-                className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                className={`flex-1 sm:flex-initial px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
                   calendarView === v
                     ? "bg-primary text-primary-foreground"
                     : "bg-card text-muted-foreground hover:text-foreground"
@@ -400,7 +400,7 @@ export default function PersonalCalendarApp() {
 
       {/* ── Tasks view ───────────────────────────────────────────────── */}
       {!loading && view === "tasks" && (
-        <div className="card-padded">
+        <div>
           <TaskList
             tasks={allTasks}
             selectedDate={taskDate}

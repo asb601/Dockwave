@@ -8,7 +8,7 @@ export default async function ChatPage() {
   if (!session?.user?.id) redirect("/");
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="absolute inset-0 flex flex-col overflow-hidden pt-14 md:pt-0">
       <ChatClient />
     </div>
   );
