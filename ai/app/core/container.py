@@ -23,6 +23,7 @@ def _build_registry() -> ToolRegistry:
     # Deferred import so that tool modules are only loaded after dotenv is
     # applied (dotenv is loaded in main.py before this is called).
     from app.agents.tools import (  # noqa: PLC0415
+        EntityGraphSearchTool,
         GetMeetingsTool,
         GraphSearchTool,
         LLMRouterTool,
@@ -32,13 +33,16 @@ def _build_registry() -> ToolRegistry:
 
     neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     neo4j_user = os.getenv("NEO4J_USERNAME", "neo4j")
-    neo4j_password = os.getenv("NEO4J_PASSWORD", "please-change-me")
+    neo4j_password = os.getenv("NEO4J_PASSWORD")
+    if not neo4j_password:
+        raise RuntimeError("NEO4J_PASSWORD environment variable is required")
     next_api_base = os.getenv("NEXT_API_BASE", "http://localhost:3000")
 
     registry = (
         ToolRegistry()
         .register(VectorSearchTool(uri=neo4j_uri, user=neo4j_user, password=neo4j_password))
         .register(GraphSearchTool(uri=neo4j_uri, user=neo4j_user, password=neo4j_password))
+        .register(EntityGraphSearchTool(uri=neo4j_uri, user=neo4j_user, password=neo4j_password))
         .register(LLMTool())
         .register(GetMeetingsTool(api_base_url=next_api_base))
         .register(LLMRouterTool())

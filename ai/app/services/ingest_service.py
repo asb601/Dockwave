@@ -24,6 +24,7 @@ import requests
 
 from app.services.graph import GraphClient
 from app.services.pdf_extract import extract_text_from_pdf_bytes
+from app.services.entity_extraction import EntityExtractor
 
 logger = logging.getLogger("intellidoc.ingest_service")
 
@@ -79,7 +80,7 @@ class IngestService:
         self.bucket = bucket or os.getenv(
             "AWS_S3_BUCKET", os.getenv("AWS_BUCKET_NAME", "")
         )
-        self.embeddings_api_key = embeddings_api_key or os.getenv("embeedings_api", "")
+        self.embeddings_api_key = embeddings_api_key or os.getenv("COHERE_API_KEY") or os.getenv("embeedings_api", "")
         self._s3 = boto3.client(
             "s3",
             region_name=os.getenv("AWS_REGION"),
@@ -152,6 +153,26 @@ class IngestService:
                 summary=summary,
             )
             upserted = graph.upsert_file_chunks(file_id, chunk_payloads)
+
+            # 6b. Entity extraction and graph enrichment
+            entity_count = 0
+            try:
+                graph.ensure_entity_indexes()
+                extractor = EntityExtractor()
+                for payload in chunk_payloads:
+                    entities = extractor.extract(payload["text"])
+                    if entities:
+                        entity_count += graph.upsert_chunk_entities(
+                            payload["id"], entities
+                        )
+                logger.info(
+                    "Entity extraction complete: %d entities across %d chunks",
+                    entity_count,
+                    len(chunk_payloads),
+                )
+            except Exception as exc:
+                logger.warning("Entity extraction failed (non-fatal): %s", exc)
+
             knowledge = graph.get_user_knowledge_json(effective_user)
         finally:
             graph.close()

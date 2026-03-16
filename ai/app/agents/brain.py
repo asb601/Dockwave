@@ -12,7 +12,7 @@ from app.util.log import log_event
 from .knowledge import KnowledgeLoader
 from .rerank import naive_rerank, hybrid_rerank
 from app.core.tool_registry import Tool, ToolRegistry
-from app.core.orchestrator import AgentOrchestrator
+from app.core.orchestrator import AgentOrchestrator, PipelineResult
 
 logger = logging.getLogger("intellidoc.brain")
 
@@ -128,33 +128,66 @@ class BrainAgent:
         min_hits: int = 6,
     ) -> Dict[str, Any]:
         """
-        Route *goal* to the appropriate tools and return a synthesised answer.
+        Route *goal* through the orchestration pipeline and return a
+        synthesised answer.
 
-        Uses the AgentOrchestrator to decide which tools to invoke, then
-        delegates to :meth:`graph_rag` and/or :meth:`get_meetings` as needed.
+        Pipeline stages:
+          1. Route  -- LLM decides which capabilities to activate
+          2. Plan   -- build execution steps (with parallel groups)
+          3. Execute -- run graph_rag / get_meetings (concurrently if both)
+          4. Synthesize -- merge outputs into a final answer
         """
         logger.info("BrainAgent.run started  goal=%r", goal)
+
+        goal = (goal or "").strip()
+        if not goal:
+            return {"goal": "", "answer": "Please provide a question or goal.", "scratchpad": []}
+        if len(goal) > 5000:
+            return {"goal": goal[:50] + "...", "answer": "Goal exceeds maximum length of 5000 characters.", "scratchpad": []}
+
         user_email = user_email or self._get_user_email()
 
         from app.util.log import log_brain_event
 
-        # Delegate routing to the orchestrator
+        # --- Stage 1: Route ---
         plan = await self._orchestrator.route(goal)
         log_brain_event("orchestration_plan", {"goal": goal, "plan": plan, "user_email": user_email})
+        self.scratchpad.append(f"Routing plan: {plan}")
 
         graph_rag_result: Optional[Dict[str, Any]] = None
         meetings_result: Optional[Dict[str, Any]] = None
 
+        # --- Stage 2 & 3: Plan + Execute ---
+        # graph_rag is handled internally (iterative loop), so we run it
+        # ourselves rather than through the orchestrator's tool execution.
+        # get_meetings is delegated to the orchestrator pipeline.
+
+        import asyncio
+        tasks = []
+
         if plan.get("graph_rag"):
-            graph_rag_result = await self.graph_rag(goal, user_email, max_iters, min_hits)
-            self.scratchpad.append(f"graph_rag result: {graph_rag_result}")
+            tasks.append(("graph_rag", self.graph_rag(goal, user_email, max_iters, min_hits)))
 
         if plan.get("get_meetings"):
-            meetings_result = await self.get_meetings(goal)
-            self.scratchpad.append(f"get_meetings result: {meetings_result}")
+            tasks.append(("get_meetings", self.get_meetings(goal)))
 
-        # No tool selected – call LLM directly for a general reply
+        if tasks:
+            # Run active tasks concurrently
+            results = await asyncio.gather(*[t[1] for t in tasks], return_exceptions=True)
+            for (name, _), result in zip(tasks, results):
+                if isinstance(result, Exception):
+                    logger.error("Task '%s' failed: %s", name, result)
+                    self.scratchpad.append(f"{name} failed: {result}")
+                elif name == "graph_rag":
+                    graph_rag_result = result
+                    self.scratchpad.append(f"graph_rag completed: {len(result.get('chunks', []))} chunks")
+                elif name == "get_meetings":
+                    meetings_result = result
+                    self.scratchpad.append(f"get_meetings completed")
+
+        # --- Stage 4: Synthesize ---
         if not plan.get("graph_rag") and not plan.get("get_meetings"):
+            # No capability selected -- direct LLM reply
             logger.info("No tool selected; using llm_summarize for a direct reply")
             llm_tool = self._registry.get("llm_summarize")
             if llm_tool:
@@ -165,7 +198,7 @@ class BrainAgent:
             self.scratchpad.append("No tool selected and no LLM configured; returning stub.")
             return {"goal": goal, "answer": answer, "scratchpad": self.scratchpad}
 
-        # At least one tool ran – prefer graph_rag answer, fall back to synthesis
+        # Prefer graph_rag answer when available
         final_answer = None
         if graph_rag_result and isinstance(graph_rag_result, dict):
             final_answer = graph_rag_result.get("answer")
@@ -226,6 +259,7 @@ class BrainAgent:
 
         vtool = self._registry.get("vector_search")
         gtool = self._registry.get("graph_search")
+        egtool = self._registry.get("entity_graph_search")
         llm = self._registry.get("llm_summarize")
 
         collected: List[Dict[str, Any]] = []
@@ -250,6 +284,14 @@ class BrainAgent:
                     for i, itx in enumerate(gout.get("items", [])):
                         itx = dict(itx)
                         itx.setdefault("source", "graph")
+                        itx.setdefault("initial_rank", i)
+                        itx["query"] = q
+                        collected.append(itx)
+                if egtool:
+                    egout = await self._log_and_run_tool(egtool, query=q, top_k=10)
+                    for i, itx in enumerate(egout.get("items", [])):
+                        itx = dict(itx)
+                        itx.setdefault("source", "entity_graph")
                         itx.setdefault("initial_rank", i)
                         itx["query"] = q
                         collected.append(itx)
@@ -432,8 +474,12 @@ class BrainAgent:
             date_info = json.loads(raw)
             start = date_info.get("start")
             end = date_info.get("end")
-        except Exception:
+        except json.JSONDecodeError as e:
+            logger.error("Failed to parse LLM date response: %s, raw=%r", e, raw[:200])
             return {"error": "Could not parse dates from LLM response", "raw": raw}
+        except Exception as e:
+            logger.exception("Unexpected error parsing date response")
+            return {"error": f"Date parsing failed: {e}", "raw": raw}
 
         if not start or not end:
             return {"error": "LLM did not provide start or end date", "raw": raw}

@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import AppNav from "@/components/layout/AppNav";
 import SidebarGate from "@/components/layout/SidebarGate";
+import DesktopTopBar from "@/components/layout/DesktopTopBar";
 
 const sans = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -52,9 +53,12 @@ export default async function RootLayout({
       >
         <div className="flex h-dvh overflow-hidden">
           <SidebarGate user={user} />
-          <main className="relative flex-1 min-w-0 overflow-y-auto pt-14 md:pt-0">
+          <main className="relative flex-1 min-w-0 flex flex-col overflow-hidden">
             {isLanding && <AppNav />}
-            {children}
+            {!isLanding && <DesktopTopBar user={user} />}
+            <div className="relative flex-1 min-h-0 overflow-y-auto pt-14 md:pt-0">
+              {children}
+            </div>
           </main>
         </div>
       </body>

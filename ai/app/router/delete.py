@@ -96,7 +96,7 @@ async def delete_file(payload: FileDeleteRequest):
         graph.close()
 
     knowledge_s3_key = _persist_knowledge(s3, bucket, effective_user, knowledge)
-    return {"ok": True, "knowledge": knowledge, "knowledge_s3_key": knowledge_s3_key}
+    return {"ok": True, "knowledge_s3_key": knowledge_s3_key}
 
 
 @router.post("/folder", dependencies=[Depends(verify_service_token)])
@@ -137,4 +137,4 @@ async def delete_folder(payload: FolderDeleteRequest):
         graph.close()
 
     knowledge_s3_key = _persist_knowledge(s3, bucket, effective_user, knowledge)
-    return {"ok": True, "files_cleaned": len(files), "knowledge": knowledge, "knowledge_s3_key": knowledge_s3_key}
+    return {"ok": True, "files_cleaned": len(files), "knowledge_s3_key": knowledge_s3_key}

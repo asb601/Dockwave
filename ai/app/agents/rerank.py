@@ -50,7 +50,14 @@ def hybrid_rerank(items: List[Dict[str, Any]], query: str, top_k: int = 15, k: i
         text = (best_repr.get("text") or "").lower() if best_repr else ""
         hits = sum(text.count(t) for t in q_tokens)
         bonus = min(0.2, hits * 0.02)  # cap the bonus
-        total = rrf + bonus
+        # entity graph source bonus: structured graph results are more precise
+        entity_bonus = 0.0
+        if best_repr and best_repr.get("source") == "entity_graph":
+            entity_bonus = 0.05
+            # Direct matches (1-hop) get extra boost
+            if best_repr.get("hops", 2) == 1:
+                entity_bonus = 0.10
+        total = rrf + bonus + entity_bonus
         if best_repr is None:
             continue
         best_repr = dict(best_repr)

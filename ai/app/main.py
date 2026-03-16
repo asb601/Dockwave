@@ -36,11 +36,12 @@ app.add_middleware(ErrorHandlerMiddleware)
 # 2. Logging attaches correlation IDs and logs request/response timing
 app.add_middleware(LoggingMiddleware)
 # 3. CORS (standard FastAPI middleware)
+_allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
