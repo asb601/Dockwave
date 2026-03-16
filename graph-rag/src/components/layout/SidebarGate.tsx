@@ -40,7 +40,7 @@ export default function SidebarGate({ user }: { user?: UserInfo }) {
 
   const pageTitle =
     PAGE_TITLES[pathname] ??
-    (pathname?.startsWith("/folders") ? "Files" : "Papermind");
+    (pathname?.startsWith("/folders") ? "Files" : "Docwave");
 
   const userName = user?.name ?? null;
   const userImage = user?.image ?? null;

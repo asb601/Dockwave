@@ -38,7 +38,7 @@ export default function AppTopBar({
             <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <span className="text-base sm:text-lg font-semibold hidden sm:block">
-            Papermind
+            Docwave
           </span>
         </Link>
 

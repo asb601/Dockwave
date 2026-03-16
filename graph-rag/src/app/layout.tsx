@@ -27,7 +27,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Papermind",
+  title: "Docwave",
   description: "Docs + Chat + Calendar",
 };
 

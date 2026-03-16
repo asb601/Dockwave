@@ -53,7 +53,7 @@ export default function Sidebar({
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
-                <span className="font-semibold text-sm">Papermind</span>
+                <span className="font-semibold text-sm">Docwave</span>
               </div>
               <button
                 aria-label="Close menu"
@@ -120,7 +120,7 @@ export default function Sidebar({
           {!collapsed && (
             <div className="flex items-center gap-2 min-w-0">
               <Sparkles className="h-4 w-4 shrink-0" />
-              <span className="text-sm font-bold truncate">Papermind</span>
+              <span className="text-sm font-bold truncate">Docwave</span>
             </div>
           )}
           <button

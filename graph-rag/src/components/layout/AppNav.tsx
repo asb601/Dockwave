@@ -20,7 +20,7 @@ export default async function AppNav() {
           <div className="h-8 w-8 rounded-xl grid place-items-center border border-border bg-secondary">
             <FileText className="w-4 h-4" />
           </div>
-          <span className="font-semibold">Papermind</span>
+          <span className="font-semibold">Docwave</span>
         </Link>
 
         {/* Actions */}

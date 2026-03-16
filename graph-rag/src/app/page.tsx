@@ -95,7 +95,7 @@ export default async function LandingPage() {
           {/* Sub-headline */}
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg md:text-xl">
             Upload, organise, and have real conversations with your files.
-            Papermind turns static PDFs into a searchable, chat-ready knowledge
+            Docwave turns static PDFs into a searchable, chat-ready knowledge
             base — in seconds.
           </p>
 
@@ -190,7 +190,7 @@ export default async function LandingPage() {
               {
                 step: "02",
                 heading: "Ask",
-                text: "Chat naturally — Papermind reads your files and surfaces the answers.",
+                text: "Chat naturally — Docwave reads your files and surfaces the answers.",
               },
               {
                 step: "03",
@@ -243,7 +243,7 @@ export default async function LandingPage() {
             <div className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-secondary">
               <FileText className="w-4 h-4" />
             </div>
-            <span className="font-display font-bold">Papermind</span>
+            <span className="font-display font-bold">Docwave</span>
           </div>
 
           <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
@@ -260,7 +260,7 @@ export default async function LandingPage() {
         </div>
 
         <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} Papermind. Built with &hearts; and
+          &copy; {new Date().getFullYear()} Docwave. Built with &hearts; and
           a lot of coffee.
         </div>
       </footer>

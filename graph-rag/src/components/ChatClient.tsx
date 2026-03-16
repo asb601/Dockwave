@@ -219,7 +219,7 @@ function ChatComposer({
           </button>
         </div>
         <p className="mt-1.5 text-center text-[10px] text-muted-foreground/50 hidden sm:block">
-          Papermind can make mistakes. Verify important information.
+          Docwave can make mistakes. Verify important information.
         </p>
       </div>
     </div>
