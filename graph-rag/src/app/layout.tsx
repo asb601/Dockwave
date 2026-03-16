@@ -56,7 +56,7 @@ export default async function RootLayout({
           <main className="relative flex-1 min-w-0 flex flex-col overflow-hidden">
             {isLanding && <AppNav />}
             {!isLanding && <DesktopTopBar user={user} />}
-            <div className="relative flex-1 min-h-0 overflow-y-auto pt-14 md:pt-0">
+            <div className="relative flex-1 min-h-0 overflow-y-auto pt-14 pb-20 md:pt-0 md:pb-0">
               {children}
             </div>
           </main>
