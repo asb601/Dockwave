@@ -23,6 +23,8 @@ model User {
   folders   Folder[]
 
   events    CalendarEvent[]
+  aiAccessRequests AiAccessRequest[]
+  aiAccess  Boolean  @default(false)
 }
 
 model Account {
@@ -122,4 +124,25 @@ model Task {
   deleted   Boolean  @default(false)
 
   @@index([eventId, dueDate])
+}
+
+// ---------- AI Access Control ----------
+
+enum AccessRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+model AiAccessRequest {
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    AccessRequestStatus @default(PENDING)
+  token     String              @unique @default(cuid())
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([token])
 }

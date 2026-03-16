@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 type ChatMessage = {
   role: "user" | "assistant" | "system";
@@ -15,6 +16,15 @@ export async function POST(req: Request) {
     }
     const userId = session.user.id as string;
     const userEmail = session.user.email ?? undefined;
+
+    // Check AI access
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { aiAccess: true },
+    });
+    if (!user?.aiAccess) {
+      return NextResponse.json({ error: "AI access not granted" }, { status: 403 });
+    }
 
     const body = (await req.json()) as { messages?: ChatMessage[] };
     const messages = body?.messages ?? [];

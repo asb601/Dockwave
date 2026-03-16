@@ -35,7 +35,7 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const hdrs = await headers();
-  const pathname = hdrs.get("x-pathname") || hdrs.get("next-url") || "";
+  const pathname = hdrs.get("x-invoke-path") || hdrs.get("x-next-url") || hdrs.get("next-url") || "";
   const isLanding = pathname === "/" || pathname === "";
 
   const session = await getServerSession(authOptions);
