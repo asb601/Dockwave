@@ -8,6 +8,7 @@ on:
       - 'ai/**'
       - '.github/workflows/ec2-deploy.yml'
 
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
