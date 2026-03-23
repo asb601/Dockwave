@@ -13,35 +13,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          host: ${{ secrets.AGENT_EC2_HOST }}
-          username: ${{ secrets.AGENT_EC2_USERNAME }}
-          key: ${{ secrets.AGENT_EC2_PRIVATE_KEY }}
-          script_stop: true
-          script: |
+          ssh-private-key: ${{ secrets.AGENT_EC2_PRIVATE_KEY }}
+
+      - name: Add EC2 to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.AGENT_EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        run: |
+          ssh ${{ secrets.AGENT_EC2_USERNAME }}@${{ secrets.AGENT_EC2_HOST }} << 'EOF'
+
             set -e
 
             echo "🚀 Starting deployment..."
 
-            # Go to project directory
             cd /home/ubuntu/Dockwave
 
             echo "📥 Pulling latest code..."
             git pull origin main
 
-            echo "📝 Creating .env file from GitHub Secrets..."
-            cat <<EOF > /home/ubuntu/Dockwave/ai/.env
-            ${{ secrets.EC2_ENV_FILE }}
-            EOF
+            echo "📝 Creating .env file..."
+            echo "${{ secrets.EC2_ENV_FILE }}" > /home/ubuntu/Dockwave/ai/.env
 
             echo "📦 Installing dependencies..."
             cd ai
             uv sync
 
-            echo "🔁 Restarting systemd service..."
+            echo "🔁 Restarting service..."
             sudo systemctl daemon-reload
             sudo systemctl restart dockwave-ai
 
-            echo "✅ Deployment completed successfully!"
+            echo "✅ Deployment completed!"
+
+          EOF
