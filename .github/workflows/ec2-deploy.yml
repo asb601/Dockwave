@@ -1,0 +1,39 @@
+name: Deploy Dockwave AI to EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ai/**'
+      - '.github/workflows/ec2-deploy.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AGENT_EC2_HOST }}
+          username: ${{ secrets.AGENT_EC2_USERNAME }}
+          key: ${{ secrets.AGENT_EC2_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            echo "🚀 Starting deployment..."
+
+            cd /home/ubuntu/Dockwave
+
+            echo "📥 Pulling latest code..."
+            git pull origin main
+
+            echo "📦 Installing dependencies..."
+            cd ai
+            uv sync
+
+            echo "🔁 Restarting service..."
+            sudo systemctl restart dockwave-ai
+
+            echo "✅ Deployment completed!"

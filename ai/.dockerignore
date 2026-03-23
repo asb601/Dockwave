@@ -1,0 +1,16 @@
+.env
+.venv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+logs/
+docs/
+ai/
+api/
+.git
+.gitignore
+README.md
+docker-compose.yml
+scripts/
