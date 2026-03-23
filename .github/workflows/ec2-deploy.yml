@@ -24,16 +24,23 @@ jobs:
 
             echo "🚀 Starting deployment..."
 
+            # Go to project directory
             cd /home/ubuntu/Dockwave
 
             echo "📥 Pulling latest code..."
             git pull origin main
 
+            echo "📝 Creating .env file from GitHub Secrets..."
+            cat <<EOF > /home/ubuntu/Dockwave/ai/.env
+            ${{ secrets.EC2_ENV_FILE }}
+            EOF
+
             echo "📦 Installing dependencies..."
             cd ai
             uv sync
 
-            echo "🔁 Restarting service..."
+            echo "🔁 Restarting systemd service..."
+            sudo systemctl daemon-reload
             sudo systemctl restart dockwave-ai
 
-            echo "✅ Deployment completed!"
+            echo "✅ Deployment completed successfully!"
