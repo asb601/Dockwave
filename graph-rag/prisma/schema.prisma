@@ -24,6 +24,7 @@ model User {
 
   events    CalendarEvent[]
   notes     Note[]
+  chatSessions ChatSession[]
   aiAccessRequests AiAccessRequest[]
   aiAccess  Boolean  @default(false)
 }
@@ -140,6 +141,36 @@ model Note {
   deleted   Boolean  @default(false)
 
   @@index([userId, updatedAt])
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+model ChatSession {
+  id            String        @id @default(cuid())
+  title         String        @default("New chat")
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages      ChatMessage[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  lastMessageAt DateTime      @default(now())
+
+  @@index([userId, lastMessageAt])
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      ChatRole
+  content   String
+  sources   Json?
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId, createdAt])
 }
 
 // ---------- AI Access Control ----------

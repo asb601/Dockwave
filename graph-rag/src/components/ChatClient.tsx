@@ -58,51 +58,16 @@ interface ChatSession {
   messages: StoredMessage[];
   createdAt: string;
   updatedAt: string;
+  lastMessageAt: string;
 }
 
 /* ── Chat History helpers ──────────────────────────────────────────────────── */
 
-const STORAGE_KEY = "docwave.chat_history";
-const MAX_SESSIONS = 50;
-
-function loadSessions(): ChatSession[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveSessions(sessions: ChatSession[]) {
-  try {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(sessions.slice(0, MAX_SESSIONS))
-    );
-  } catch {
-    // storage full — drop oldest
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(sessions.slice(0, 20))
-      );
-    } catch {
-      /* ignore */
-    }
-  }
-}
-
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
-
-function titleFromMessages(msgs: Message[]): string {
-  const first = msgs.find((m) => m.role === "user");
-  if (!first) return "New chat";
-  const text = first.content.trim();
-  return text.length > 50 ? text.slice(0, 50) + "…" : text;
+function hydrateMessages(messages: StoredMessage[]): Message[] {
+  return messages.map((message) => ({
+    ...message,
+    timestamp: new Date(message.timestamp),
+  }));
 }
 
 /* ── Prompt suggestions for empty state ────────────────────────────────────── */
@@ -434,66 +399,47 @@ export default function ChatClient() {
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // Load sessions from localStorage on mount
-  useEffect(() => {
-    const loaded = loadSessions();
-    setSessions(loaded);
-    if (loaded.length > 0) {
-      const latest = loaded[0];
-      setActiveSessionId(latest.id);
-      setMessages(
-        latest.messages.map((m) => ({
-          ...m,
-          timestamp: new Date(m.timestamp),
-        }))
-      );
+  const refreshSessions = useCallback(async (preferredSessionId?: string | null) => {
+    const res = await fetch("/api/chat", { cache: "no-store" });
+    if (!res.ok) {
+      return;
     }
-  }, []);
 
-  // Persist messages to session whenever they change
+    const data = (await res.json()) as { sessions?: ChatSession[] };
+    const nextSessions = data.sessions ?? [];
+    setSessions(nextSessions);
+
+    const targetId = preferredSessionId === undefined ? activeSessionId : preferredSessionId;
+    if (targetId) {
+      const active = nextSessions.find((session) => session.id === targetId);
+      if (active) {
+        setActiveSessionId(active.id);
+        setMessages(hydrateMessages(active.messages));
+        return;
+      }
+    }
+
+    if (nextSessions.length > 0) {
+      setActiveSessionId(nextSessions[0].id);
+      setMessages(hydrateMessages(nextSessions[0].messages));
+      return;
+    }
+
+    setActiveSessionId(null);
+    setMessages([]);
+  }, [activeSessionId]);
+
+  // Load sessions from the database on mount
   useEffect(() => {
-    if (!activeSessionId || messages.length === 0) return;
-    setSessions((prev) => {
-      const updated = prev.map((s) =>
-        s.id === activeSessionId
-          ? {
-              ...s,
-              title: titleFromMessages(messages),
-              messages: messages.map((m) => ({
-                role: m.role,
-                content: m.content,
-                timestamp: m.timestamp.toISOString(),
-                sources: m.sources,
-              })),
-              updatedAt: new Date().toISOString(),
-            }
-          : s
-      );
-      saveSessions(updated);
-      return updated;
-    });
-  }, [messages, activeSessionId]);
+    void refreshSessions();
+  }, [refreshSessions]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
 
   function startNewChat() {
-    const id = generateId();
-    const now = new Date().toISOString();
-    const session: ChatSession = {
-      id,
-      title: "New chat",
-      messages: [],
-      createdAt: now,
-      updatedAt: now,
-    };
-    setSessions((prev) => {
-      const updated = [session, ...prev];
-      saveSessions(updated);
-      return updated;
-    });
-    setActiveSessionId(id);
+    setActiveSessionId(null);
     setMessages([]);
   }
 
@@ -501,82 +447,47 @@ export default function ChatClient() {
     const session = sessions.find((s) => s.id === id);
     if (!session) return;
     setActiveSessionId(id);
-    setMessages(
-      session.messages.map((m) => ({
-        ...m,
-        timestamp: new Date(m.timestamp),
-      }))
-    );
+    setMessages(hydrateMessages(session.messages));
   }
 
-  function deleteSession(id: string) {
-    setSessions((prev) => {
-      const updated = prev.filter((s) => s.id !== id);
-      saveSessions(updated);
-      // If we deleted the active session, switch to latest or clear
-      if (id === activeSessionId) {
-        if (updated.length > 0) {
-          setActiveSessionId(updated[0].id);
-          setMessages(
-            updated[0].messages.map((m) => ({
-              ...m,
-              timestamp: new Date(m.timestamp),
-            }))
-          );
-        } else {
-          setActiveSessionId(null);
-          setMessages([]);
-        }
-      }
-      return updated;
-    });
+  async function deleteSession(id: string) {
+    const res = await fetch(`/api/chat/${id}`, { method: "DELETE" });
+    if (!res.ok) return;
+    await refreshSessions(activeSessionId === id ? null : activeSessionId);
   }
 
   async function sendMessage(text: string) {
-    if (!text.trim()) return;
-
-    // Auto-create a session if none active
-    let sessionId = activeSessionId;
-    if (!sessionId) {
-      const id = generateId();
-      const now = new Date().toISOString();
-      const session: ChatSession = {
-        id,
-        title: "New chat",
-        messages: [],
-        createdAt: now,
-        updatedAt: now,
-      };
-      setSessions((prev) => {
-        const updated = [session, ...prev];
-        saveSessions(updated);
-        return updated;
-      });
-      setActiveSessionId(id);
-      sessionId = id;
-    }
+    const trimmed = text.trim();
+    if (!trimmed) return;
 
     const userMsg: Message = {
       role: "user",
-      content: text.trim(),
+      content: trimmed,
       timestamp: new Date(),
     };
+    const sessionId = activeSessionId;
     setMessages((m) => [...m, userMsg]);
     setSending(true);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMsg] }),
+        body: JSON.stringify({ sessionId, message: trimmed }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error ?? "Request failed");
+      }
       const assistant: Message = {
         role: "assistant",
         content: data?.message?.content ?? "(no response)",
-        timestamp: new Date(),
+        timestamp: data?.message?.timestamp ? new Date(data.message.timestamp) : new Date(),
         sources: (data?.sources ?? []) as Source[],
       };
+      const nextSessionId = (data?.sessionId as string | undefined) ?? sessionId ?? null;
+      setActiveSessionId(nextSessionId);
       setMessages((m) => [...m, assistant]);
+      await refreshSessions(nextSessionId);
     } catch {
       setMessages((m) => [
         ...m,
