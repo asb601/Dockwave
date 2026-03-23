@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 
 type ChatMessage = {
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
       where: { id: userId },
       select: { aiAccess: true },
     });
-    if (!user?.aiAccess) {
+    if (!user?.aiAccess && !isAdminEmail(session.user.email)) {
       return NextResponse.json({ error: "AI access not granted" }, { status: 403 });
     }
 
@@ -37,8 +38,7 @@ export async function POST(req: Request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // Optional service token if FastAPI enables auth
-        ...(process.env.AI_SERVICE_TOKEN ? { "x-service-token": process.env.AI_SERVICE_TOKEN } : {}),
+        ...(process.env.SERVICE_TOKEN ? { "x-service-token": process.env.SERVICE_TOKEN } : {}),
       },
       body: JSON.stringify({ goal: lastUser, user_email: userEmail || userId, max_iters: 4, min_hits: 6 }),
       next: { revalidate: 0 },
@@ -49,11 +49,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `Agent error: ${resp.status} ${text}` }, { status: 502 });
     }
 
-    const data = (await resp.json()) as { answer?: string };
+    const data = (await resp.json()) as {
+      answer?: string;
+      sources?: Array<{ file: string; page: number | null; preview: string }>;
+      action_results?: Record<string, unknown>;
+    };
     const answer = data?.answer ?? "";
+    const sources = data?.sources ?? [];
+    const actionResults = data?.action_results ?? null;
 
-    // Only return the assistant's answer (no diagnostics or sources)
-    return NextResponse.json({ message: { role: "assistant", content: answer } });
+    return NextResponse.json({
+      message: { role: "assistant", content: answer },
+      sources,
+      ...(actionResults ? { action_results: actionResults } : {}),
+    });
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }

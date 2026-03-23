@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
+import asyncio
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -28,12 +30,25 @@ class IngestResponse(BaseModel):
     knowledge_s3_key: Optional[str] = None
 
 
-@router.post("/file", response_model=IngestResponse, dependencies=[Depends(verify_service_token)])
-async def ingest_file(payload: IngestRequest):
-    """Ingest a PDF file: extract, chunk, embed, index, and snapshot knowledge."""
+@router.post(
+    "/file",
+    response_model=IngestResponse,
+    dependencies=[Depends(verify_service_token)],
+)
+async def ingest_file(payload: IngestRequest, background_tasks: BackgroundTasks):
+    """Ingest a PDF: extract text, chunk, embed, store in Neo4j, then snapshot
+    knowledge to S3.
+
+    Entity graph enrichment is deferred to a background task so the caller
+    receives a response as soon as the core ingest is complete — typically
+    several seconds faster than the previous synchronous approach.
+    """
     service = IngestService(bucket=payload.s3_bucket)
     try:
-        result = service.ingest(
+        # ingest() is synchronous (boto3 + requests + neo4j).
+        # Run in a thread pool so we don't block the asyncio event loop.
+        result = await asyncio.to_thread(
+            service.ingest,
             user_email=payload.user_email or payload.user_id,
             user_id=payload.user_id,
             file_id=payload.file_id,
@@ -44,5 +59,11 @@ async def ingest_file(payload: IngestRequest):
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    # Kick off entity extraction after we've already responded.
+    chunk_payloads = result.pop("_chunk_payloads", [])
+    if result.get("ok") and chunk_payloads:
+        background_tasks.add_task(service.enrich_entities, chunk_payloads)
+
     return IngestResponse(**result)
 

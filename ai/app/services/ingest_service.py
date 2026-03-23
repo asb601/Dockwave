@@ -26,8 +26,6 @@ from app.services.graph import GraphClient
 from app.services.pdf_extract import extract_text_from_pdf_bytes
 from app.services.entity_extraction import EntityExtractor
 
-logger = logging.getLogger("intellidoc.ingest_service")
-
 
 # ---------------------------------------------------------------------------
 # Text processing helpers
@@ -37,15 +35,16 @@ def dynamic_chunk(text: str) -> List[str]:
     """
     Split *text* into overlapping chunks whose size adapts to document length.
 
-    Target is roughly 600 tokens (~2 400 chars). Chunk size is clamped to the
-    range [1 200, 3 500] characters and overlap is fixed at 15 %.
+    Target is roughly 1 000 tokens (~4 000 chars). Chunk size is clamped to the
+    range [2 000, 5 000] characters and overlap is 25 % so that reasoning
+    spanning paragraph or footnote boundaries is preserved in at least one chunk.
     """
     length = len(text)
     if length < 5000:
-        size = max(1200, int(length / 3) or 800)
+        size = max(2000, int(length / 2) or 1500)
     else:
-        size = min(3500, 2400 + int((length / 20000) * 1000))
-    overlap = int(size * 0.15)
+        size = min(5000, 4000 + int((length / 20000) * 1000))
+    overlap = int(size * 0.25)
 
     clean = " ".join(text.split())
     chunks: List[str] = []
@@ -63,6 +62,18 @@ def summarize(text: str, max_chars: int = 4000) -> str:
     """Return a bullet-point summary of the first *max_chars* of *text*."""
     lines = text[:max_chars].split(". ")
     return "\n".join(f"- {b.strip()}" for b in lines[:7] if b.strip())
+
+
+_PAGE_HEADER_RE = re.compile(r"=== Page (\d+) /")
+
+
+def _page_for_chunk(chunk_text: str) -> int:
+    """Return the first page number (1-based) found in the chunk via the
+    '=== Page N / M ===' header injected by extract_text_from_pdf_bytes.
+    Returns 0 when no header is present (e.g., old re-ingested documents).
+    """
+    m = _PAGE_HEADER_RE.search(chunk_text)
+    return int(m.group(1)) if m else 0
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +144,7 @@ class IngestService:
                 "id": f"{file_id}:{i:04d}",
                 "index": i,
                 "text": chunks[i],
+                "page": _page_for_chunk(chunks[i]),
                 "charStart": char_offsets[i],
                 "charEnd": char_offsets[i] + len(chunks[i]),
                 "embedding": embeddings[i],
@@ -153,26 +165,6 @@ class IngestService:
                 summary=summary,
             )
             upserted = graph.upsert_file_chunks(file_id, chunk_payloads)
-
-            # 6b. Entity extraction and graph enrichment
-            entity_count = 0
-            try:
-                graph.ensure_entity_indexes()
-                extractor = EntityExtractor()
-                for payload in chunk_payloads:
-                    entities = extractor.extract(payload["text"])
-                    if entities:
-                        entity_count += graph.upsert_chunk_entities(
-                            payload["id"], entities
-                        )
-                logger.info(
-                    "Entity extraction complete: %d entities across %d chunks",
-                    entity_count,
-                    len(chunk_payloads),
-                )
-            except Exception as exc:
-                logger.warning("Entity extraction failed (non-fatal): %s", exc)
-
             knowledge = graph.get_user_knowledge_json(effective_user)
         finally:
             graph.close()
@@ -187,7 +179,43 @@ class IngestService:
             "summary": summary,
             "knowledge": knowledge,
             "knowledge_s3_key": knowledge_s3_key,
+            # Internal field used by the router to kick off background enrichment.
+            # Not included in the HTTP response model.
+            "_chunk_payloads": chunk_payloads,
         }
+
+    def enrich_entities(self, chunk_payloads: list) -> None:
+        """Run entity extraction + graph enrichment for the given chunk payloads.
+
+        Designed to be called as a FastAPI BackgroundTask after the ingest
+        response has already been sent to the caller.  All failures are
+        logged but never re-raised so they cannot affect the main request.
+        """
+        if not chunk_payloads:
+            return
+        try:
+            graph = GraphClient()
+            try:
+                graph.ensure_entity_indexes()
+                extractor = EntityExtractor()
+                batch_entities = extractor.extract_batch(
+                    [p["text"] for p in chunk_payloads]
+                )
+                entity_count = 0
+                for payload, entities in zip(chunk_payloads, batch_entities):
+                    if entities:
+                        entity_count += graph.upsert_chunk_entities(
+                            payload["id"], entities
+                        )
+                logger.info(
+                    "Background enrichment complete: %d entities across %d chunks",
+                    entity_count,
+                    len(chunk_payloads),
+                )
+            finally:
+                graph.close()
+        except Exception as exc:
+            logger.warning("Entity enrichment failed (non-fatal): %s", exc)
 
     # ------------------------------------------------------------------
     # Private helpers

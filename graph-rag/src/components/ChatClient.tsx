@@ -10,21 +10,99 @@ import {
 import {
   ArrowUp,
   Bot,
+  BookOpen,
+  ChevronDown,
+  ChevronLeft,
+  ChevronUp,
   FileText,
+  Home,
   MessageSquare,
+  PanelLeft,
+  Plus,
   Search,
   Sparkles,
+  Trash2,
   User,
+  History,
+  X,
 } from "lucide-react";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 
+export interface Source {
+  file: string;
+  page: number | null;
+  preview: string;
+}
+
 export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  sources?: Source[];
+}
+
+interface StoredMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  sources?: Source[];
+}
+
+interface ChatSession {
+  id: string;
+  title: string;
+  messages: StoredMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* ── Chat History helpers ──────────────────────────────────────────────────── */
+
+const STORAGE_KEY = "docwave.chat_history";
+const MAX_SESSIONS = 50;
+
+function loadSessions(): ChatSession[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSessions(sessions: ChatSession[]) {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(sessions.slice(0, MAX_SESSIONS))
+    );
+  } catch {
+    // storage full — drop oldest
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(sessions.slice(0, 20))
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function titleFromMessages(msgs: Message[]): string {
+  const first = msgs.find((m) => m.role === "user");
+  if (!first) return "New chat";
+  const text = first.content.trim();
+  return text.length > 50 ? text.slice(0, 50) + "…" : text;
 }
 
 /* ── Prompt suggestions for empty state ────────────────────────────────────── */
@@ -88,6 +166,45 @@ function TypingIndicator() {
   );
 }
 
+/* ── References Panel ──────────────────────────────────────────────────────── */
+
+function ReferencesPanel({ sources }: { sources: Source[] }) {
+  const [open, setOpen] = useState(false);
+  if (!sources || sources.length === 0) return null;
+  return (
+    <div className="mt-2 rounded-xl border border-border bg-muted/40 text-xs">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1.5 px-3 py-2 text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <BookOpen className="w-3.5 h-3.5 shrink-0" />
+        <span className="font-medium">
+          {sources.length} reference{sources.length !== 1 ? "s" : ""}
+        </span>
+        {open ? <ChevronUp className="w-3 h-3 ml-auto" /> : <ChevronDown className="w-3 h-3 ml-auto" />}
+      </button>
+      {open && (
+        <ul className="border-t border-border divide-y divide-border">
+          {sources.map((s, i) => (
+            <li key={i} className="flex items-start gap-2 px-3 py-2">
+              <FileText className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+              <div className="min-w-0">
+                <p className="font-medium text-foreground truncate">
+                  {s.file}{s.page ? <span className="ml-1 text-muted-foreground font-normal">p.{s.page}</span> : null}
+                </p>
+                {s.preview && (
+                  <p className="text-muted-foreground line-clamp-2 mt-0.5">{s.preview}</p>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /* ── Message Bubble ────────────────────────────────────────────────────────── */
 
 function MessageBubble({ message }: { message: Message }) {
@@ -99,7 +216,7 @@ function MessageBubble({ message }: { message: Message }) {
       <div
         className={`shrink-0 mt-0.5 h-7 w-7 sm:h-8 sm:w-8 rounded-full grid place-items-center text-xs font-bold ${
           isUser
-            ? "bg-primary text-primary-foreground"
+            ? "bg-secondary border border-border text-foreground"
             : "bg-secondary border border-border text-muted-foreground"
         }`}
       >
@@ -109,9 +226,9 @@ function MessageBubble({ message }: { message: Message }) {
       {/* Bubble */}
       <div className="flex flex-col gap-1 max-w-[min(80vw,44rem)]">
         <div
-          className={`rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-[15px] leading-relaxed ${
+          className={`rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-[15px] leading-relaxed select-text ${
             isUser
-              ? "rounded-tr-sm bg-primary text-primary-foreground"
+              ? "rounded-tr-sm bg-secondary border border-border text-foreground"
               : "rounded-tl-sm bg-card border border-border prose-chat"
           }`}
         >
@@ -123,6 +240,9 @@ function MessageBubble({ message }: { message: Message }) {
             </ReactMarkdown>
           )}
         </div>
+        {!isUser && message.sources && message.sources.length > 0 && (
+          <ReferencesPanel sources={message.sources} />
+        )}
 
         <span
           className={`text-[10px] text-muted-foreground/60 px-1 ${isUser ? "text-right" : "text-left"}`}
@@ -192,8 +312,8 @@ function ChatComposer({
   }
 
   return (
-    <div className="border-t border-border bg-background/80 backdrop-blur-lg pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto max-w-3xl px-3 sm:px-4 py-2.5 sm:py-3">
+    <div className="border-t border-border bg-background/80 backdrop-blur-lg pb-20 md:pb-0">
+      <div className="mx-auto max-w-3xl px-3 sm:px-4 py-2.5 sm:py-3 pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-end gap-2 rounded-2xl border border-border bg-card p-1.5 sm:p-2 shadow-sm transition-shadow focus-within:shadow-md focus-within:border-foreground/20">
           <textarea
             ref={textareaRef}
@@ -226,19 +346,216 @@ function ChatComposer({
   );
 }
 
+/* ── Chat History Sidebar ───────────────────────────────────────────────── */
+
+function ChatHistoryPanel({
+  sessions,
+  activeId,
+  onSelect,
+  onNew,
+  onDelete,
+  onClose,
+}: {
+  sessions: ChatSession[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+  onNew: () => void;
+  onDelete: (id: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
+        <span className="text-sm font-semibold">Chat History</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onNew}
+            className="h-7 w-7 rounded-lg hover:bg-secondary grid place-items-center transition-colors"
+            aria-label="New chat"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onClose}
+            className="h-7 w-7 rounded-lg hover:bg-secondary grid place-items-center transition-colors"
+            aria-label="Close history"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto py-1.5">
+        {sessions.length === 0 ? (
+          <p className="px-3 py-4 text-xs text-muted-foreground text-center">
+            No conversations yet
+          </p>
+        ) : (
+          sessions.map((s) => (
+            <div
+              key={s.id}
+              className={`group flex items-center gap-2 px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-colors text-sm ${
+                s.id === activeId
+                  ? "bg-secondary font-medium"
+                  : "hover:bg-secondary/60"
+              }`}
+            >
+              <button
+                className="flex-1 text-left truncate min-w-0"
+                onClick={() => { onSelect(s.id); onClose(); }}
+              >
+                {s.title}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(s.id);
+                }}
+                className="shrink-0 h-6 w-6 rounded grid place-items-center opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
+                aria-label="Delete chat"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Main ChatClient ───────────────────────────────────────────────────────── */
 
 export default function ChatClient() {
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
+
+  // Load sessions from localStorage on mount
+  useEffect(() => {
+    const loaded = loadSessions();
+    setSessions(loaded);
+    if (loaded.length > 0) {
+      const latest = loaded[0];
+      setActiveSessionId(latest.id);
+      setMessages(
+        latest.messages.map((m) => ({
+          ...m,
+          timestamp: new Date(m.timestamp),
+        }))
+      );
+    }
+  }, []);
+
+  // Persist messages to session whenever they change
+  useEffect(() => {
+    if (!activeSessionId || messages.length === 0) return;
+    setSessions((prev) => {
+      const updated = prev.map((s) =>
+        s.id === activeSessionId
+          ? {
+              ...s,
+              title: titleFromMessages(messages),
+              messages: messages.map((m) => ({
+                role: m.role,
+                content: m.content,
+                timestamp: m.timestamp.toISOString(),
+                sources: m.sources,
+              })),
+              updatedAt: new Date().toISOString(),
+            }
+          : s
+      );
+      saveSessions(updated);
+      return updated;
+    });
+  }, [messages, activeSessionId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
 
+  function startNewChat() {
+    const id = generateId();
+    const now = new Date().toISOString();
+    const session: ChatSession = {
+      id,
+      title: "New chat",
+      messages: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    setSessions((prev) => {
+      const updated = [session, ...prev];
+      saveSessions(updated);
+      return updated;
+    });
+    setActiveSessionId(id);
+    setMessages([]);
+  }
+
+  function selectSession(id: string) {
+    const session = sessions.find((s) => s.id === id);
+    if (!session) return;
+    setActiveSessionId(id);
+    setMessages(
+      session.messages.map((m) => ({
+        ...m,
+        timestamp: new Date(m.timestamp),
+      }))
+    );
+  }
+
+  function deleteSession(id: string) {
+    setSessions((prev) => {
+      const updated = prev.filter((s) => s.id !== id);
+      saveSessions(updated);
+      // If we deleted the active session, switch to latest or clear
+      if (id === activeSessionId) {
+        if (updated.length > 0) {
+          setActiveSessionId(updated[0].id);
+          setMessages(
+            updated[0].messages.map((m) => ({
+              ...m,
+              timestamp: new Date(m.timestamp),
+            }))
+          );
+        } else {
+          setActiveSessionId(null);
+          setMessages([]);
+        }
+      }
+      return updated;
+    });
+  }
+
   async function sendMessage(text: string) {
     if (!text.trim()) return;
+
+    // Auto-create a session if none active
+    let sessionId = activeSessionId;
+    if (!sessionId) {
+      const id = generateId();
+      const now = new Date().toISOString();
+      const session: ChatSession = {
+        id,
+        title: "New chat",
+        messages: [],
+        createdAt: now,
+        updatedAt: now,
+      };
+      setSessions((prev) => {
+        const updated = [session, ...prev];
+        saveSessions(updated);
+        return updated;
+      });
+      setActiveSessionId(id);
+      sessionId = id;
+    }
+
     const userMsg: Message = {
       role: "user",
       content: text.trim(),
@@ -257,6 +574,7 @@ export default function ChatClient() {
         role: "assistant",
         content: data?.message?.content ?? "(no response)",
         timestamp: new Date(),
+        sources: (data?.sources ?? []) as Source[],
       };
       setMessages((m) => [...m, assistant]);
     } catch {
@@ -276,17 +594,91 @@ export default function ChatClient() {
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {hasMessages ? (
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-          <MessageList messages={messages} sending={sending} endRef={endRef} />
-        </div>
-      ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <EmptyState onPrompt={sendMessage} />
-        </div>
+    <div className="flex h-full min-h-0">
+      {/* History panel — desktop: collapsible sidebar */}
+      {desktopSidebarOpen && (
+        <aside className="hidden md:flex w-64 shrink-0 border-r border-border bg-background flex-col">
+          <ChatHistoryPanel
+            sessions={sessions}
+            activeId={activeSessionId}
+            onSelect={selectSession}
+            onNew={startNewChat}
+            onDelete={deleteSession}
+            onClose={() => setDesktopSidebarOpen(false)}
+          />
+        </aside>
       )}
-      <ChatComposer onSubmit={sendMessage} sending={sending} />
+
+      {/* Mobile history overlay */}
+      {historyOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 md:hidden"
+            onClick={() => setHistoryOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 bg-background border-r border-border flex flex-col md:hidden animate-in slide-in-from-left duration-200">
+            <ChatHistoryPanel
+              sessions={sessions}
+              activeId={activeSessionId}
+              onSelect={selectSession}
+              onNew={startNewChat}
+              onDelete={deleteSession}
+              onClose={() => setHistoryOpen(false)}
+            />
+          </aside>
+        </>
+      )}
+
+      {/* Main chat area */}
+      <div className="flex flex-col flex-1 min-w-0 min-h-0">
+        {/* Header with home button + history toggle + new chat */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
+          <Link
+            href="/home"
+            className="shrink-0 h-8 w-8 rounded-lg border border-border bg-card grid place-items-center active:scale-95 transition-transform md:hidden"
+            aria-label="Home"
+          >
+            <Home className="w-3.5 h-3.5" />
+          </Link>
+          {/* Mobile: open history overlay */}
+          <button
+            onClick={() => setHistoryOpen(true)}
+            className="shrink-0 h-8 w-8 rounded-lg border border-border bg-card grid place-items-center active:scale-95 transition-transform md:hidden"
+            aria-label="Chat history"
+          >
+            <History className="w-3.5 h-3.5" />
+          </button>
+          {/* Desktop: toggle sidebar */}
+          {!desktopSidebarOpen && (
+            <button
+              onClick={() => setDesktopSidebarOpen(true)}
+              className="hidden md:grid shrink-0 h-8 w-8 rounded-lg border border-border bg-card place-items-center hover:bg-secondary transition-colors"
+              aria-label="Open sidebar"
+            >
+              <PanelLeft className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <span className="text-sm font-semibold truncate flex-1 text-center">Chat</span>
+          <button
+            onClick={startNewChat}
+            className="shrink-0 h-8 w-8 rounded-lg border border-border bg-card grid place-items-center active:scale-95 transition-transform"
+            aria-label="New chat"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {hasMessages ? (
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            <MessageList messages={messages} sending={sending} endRef={endRef} />
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <EmptyState onPrompt={sendMessage} />
+          </div>
+        )}
+        <ChatComposer onSubmit={sendMessage} sending={sending} />
+      </div>
     </div>
   );
 }

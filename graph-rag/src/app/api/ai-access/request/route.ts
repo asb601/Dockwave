@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { sendAccessRequestEmail } from "@/lib/mail";
 
@@ -14,6 +15,10 @@ export async function POST() {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  if (isAdminEmail(session.user.email)) {
+    return NextResponse.json({ status: "already_approved" });
   }
 
   // Already has access
@@ -68,7 +73,7 @@ export async function GET() {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  if (user.aiAccess) {
+  if (user.aiAccess || isAdminEmail(session.user.email)) {
     return NextResponse.json({ hasAccess: true, status: "approved" });
   }
 

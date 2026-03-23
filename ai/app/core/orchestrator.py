@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -69,8 +70,12 @@ class AgentOrchestrator:
     # Maps routing-plan keys to the tool names they trigger.
     # Extend this when new capabilities are added.
     CAPABILITY_MAP: Dict[str, str] = {
-        "graph_rag": "graph_rag",      # handled by BrainAgent.graph_rag
+        "graph_rag": "graph_rag",          # handled by BrainAgent.graph_rag
         "get_meetings": "get_meetings",
+        "create_event": "create_event",    # calendar event creation
+        "create_task": "create_task",      # task creation on an event
+        "create_note": "create_note",      # create a note
+        "edit_note": "edit_note",          # edit an existing note
     }
 
     def __init__(self, registry: ToolRegistry) -> None:
@@ -90,12 +95,17 @@ class AgentOrchestrator:
         router = self.registry.get("llm_router")
         if not router:
             logger.warning("llm_router not registered; defaulting to graph_rag=True")
-            return {"graph_rag": True, "get_meetings": False}
+            return {cap: (cap == "graph_rag") for cap in self.CAPABILITY_MAP}
 
         result = await router.run(question=goal)
         raw = result.get("answer", "{}")
         try:
-            plan = json.loads(raw)
+            text = raw.strip()
+            # Strip markdown code fences the LLM may wrap around JSON
+            fence_match = re.search(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
+            if fence_match:
+                text = fence_match.group(1).strip()
+            plan = json.loads(text)
             if not isinstance(plan, dict):
                 raise ValueError("routing plan is not a JSON object")
             # Ensure all known capabilities have a boolean value
@@ -108,7 +118,7 @@ class AgentOrchestrator:
                 exc,
                 raw[:200],
             )
-            return {"graph_rag": True, "get_meetings": False}
+            return {cap: (cap == "graph_rag") for cap in self.CAPABILITY_MAP}
 
     # ------------------------------------------------------------------
     # Stage 2: Planning

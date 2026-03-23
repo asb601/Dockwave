@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import ChatClient from "@/components/ChatClient";
 import AiAccessGate from "@/components/AiAccessGate";
@@ -14,7 +15,9 @@ export default async function ChatPage() {
     select: { aiAccess: true },
   });
 
-  if (!user?.aiAccess) {
+  const hasChatAccess = isAdminEmail(session.user.email) || !!user?.aiAccess;
+
+  if (!hasChatAccess) {
     return (
       <div className="absolute inset-0 flex flex-col overflow-hidden pt-14 md:pt-0">
         <AiAccessGate>

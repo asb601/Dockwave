@@ -5,12 +5,17 @@ import { prisma } from '@/lib/prisma';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
+const AWS_REGION = process.env.AWS_REGION;
+const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
+const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+const AWS_BUCKET_NAME = process.env.AWS_BUCKET_NAME;
+
 const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
+  region: AWS_REGION,
+  credentials: AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY ? {
+    accessKeyId: AWS_ACCESS_KEY_ID,
+    secretAccessKey: AWS_SECRET_ACCESS_KEY,
+  } : undefined,
 });
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +34,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'File not found' }, { status: 404 });
   }
 
-  const bucketName = 'codeen601';
+  const bucketName = AWS_BUCKET_NAME;
+
+  if (!AWS_REGION || !bucketName) {
+    return NextResponse.json({ error: 'Missing AWS configuration (AWS_REGION/AWS_BUCKET_NAME)' }, { status: 500 });
+  }
 
   try {
     const command = new GetObjectCommand({

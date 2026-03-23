@@ -11,6 +11,7 @@ import {
   Sparkles,
   User,
   LogOut,
+  StickyNote,
 } from "lucide-react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/home", Icon: Home, label: "Home" },
   { href: "/chat", Icon: MessageSquare, label: "Chat" },
   { href: "/calendar", Icon: CalIcon, label: "Calendar" },
+  { href: "/notes", Icon: StickyNote, label: "Notes" },
 ] as const;
 
 export default function Sidebar({
@@ -41,7 +43,7 @@ export default function Sidebar({
   return (
     <>
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur-xl md:hidden">
-        <div className="grid grid-cols-3 gap-1 px-2 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
+        <div className="grid grid-cols-4 gap-1 px-2 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
           {NAV_ITEMS.map(({ href, Icon, label }) => (
             <Link
               key={href}

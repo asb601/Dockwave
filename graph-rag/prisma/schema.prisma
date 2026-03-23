@@ -23,6 +23,7 @@ model User {
   folders   Folder[]
 
   events    CalendarEvent[]
+  notes     Note[]
   aiAccessRequests AiAccessRequest[]
   aiAccess  Boolean  @default(false)
 }
@@ -124,6 +125,21 @@ model Task {
   deleted   Boolean  @default(false)
 
   @@index([eventId, dueDate])
+}
+
+// ---------- Notes ----------
+
+model Note {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @default("")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted   Boolean  @default(false)
+
+  @@index([userId, updatedAt])
 }
 
 // ---------- AI Access Control ----------

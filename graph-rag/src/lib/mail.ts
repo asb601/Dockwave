@@ -48,3 +48,20 @@ export async function sendAccessRequestEmail({
     `,
   });
 }
+
+export async function sendTestEmail() {
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_SERVER_USER;
+  if (!adminEmail) throw new Error("ADMIN_EMAIL not configured");
+
+  return transporter.sendMail({
+    from: process.env.EMAIL_FROM || process.env.EMAIL_SERVER_USER,
+    to: adminEmail,
+    subject: "Docwave mail test",
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
+        <h2 style="margin: 0 0 8px; font-size: 20px; color: #111;">Mail Test Successful</h2>
+        <p style="margin: 0; color: #555; font-size: 14px;">This confirms Docwave can connect to Gmail SMTP and deliver admin emails.</p>
+      </div>
+    `,
+  });
+}

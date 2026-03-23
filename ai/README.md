@@ -217,25 +217,22 @@ User question
 # 1. Start Neo4j
 docker-compose up -d
 
-# 2. Create and activate virtualenv
-python -m venv .venv && source .venv/bin/activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
+# 2. Sync the uv environment
+uv sync --python 3.12
 
 # 4. Set environment variables (see below)
 export NEO4J_URI=bolt://localhost:7687
 export NEO4J_USERNAME=neo4j
 export NEO4J_PASSWORD=your-password
-export AZURE_OPENAI_API_KEY=your-key
-export AZURE_OPENAI_API_BASE=https://your-endpoint.openai.azure.com
+export GROQ_API_KEY=your-key
+export GROQ_MODEL=llama-3.1-8b-instant
 export embeedings_api=your-cohere-key
 export AWS_S3_BUCKET=your-bucket
 export AWS_ACCESS_KEY_ID=your-key
 export AWS_SECRET_ACCESS_KEY=your-secret
 
 # 5. Run the service
-uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --port 8000
 
 # 6. Verify
 curl http://localhost:8000/healthz
@@ -248,9 +245,11 @@ curl http://localhost:8000/healthz
 | `NEO4J_URI` | `bolt://localhost:7687` | Neo4j connection URI |
 | `NEO4J_USERNAME` | `neo4j` | Neo4j username |
 | `NEO4J_PASSWORD` | `please-change-me` | Neo4j password |
-| `AZURE_OPENAI_API_KEY` | — | Azure OpenAI API key |
-| `AZURE_OPENAI_API_BASE` | — | Azure OpenAI endpoint |
-| `AZURE_OPENAI_MODEL` | `gpt-4o-mini` | LLM deployment name |
+| `GROQ_API_KEY` | — | Groq API key for chat/entity extraction |
+| `GROQ_MODEL` | `llama-3.1-8b-instant` | Groq model name |
+| `AZURE_OPENAI_API_KEY` | — | Azure OpenAI API key (fallback) |
+| `AZURE_OPENAI_API_BASE` | — | Azure OpenAI endpoint (fallback) |
+| `AZURE_OPENAI_MODEL` | `gpt-4o-mini` | Azure deployment name (fallback) |
 | `embeedings_api` | — | Cohere API key |
 | `AWS_S3_BUCKET` | — | S3 bucket for document storage |
 | `AWS_ACCESS_KEY_ID` | — | AWS access key |

@@ -10,6 +10,8 @@ pypdf
 openai
 requests
 cohere
+httpx
+pdfminer.six
 # Optional (uncomment if you later use these features)
 # pdfminer.six      # advanced PDF text extraction
 # pytesseract       # OCR

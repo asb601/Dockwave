@@ -39,7 +39,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   // Delete DB record first so UI reflects change immediately
   await prisma.file.delete({ where: { id } });
 
-  const bucketName = process.env.AWS_S3_BUCKET || process.env.AWS_BUCKET_NAME;
+  const bucketName = process.env.AWS_BUCKET_NAME;
 
   // Delete from S3 (best-effort)
   let s3Deleted = false;

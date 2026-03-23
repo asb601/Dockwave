@@ -1,16 +1,19 @@
+"use client";
+
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { FileText } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 /** Top navigation bar (server component) shown on the landing page. */
-export default async function AppNav() {
-  const session = await getServerSession(authOptions);
-  const isAuthed = !!session?.user?.id;
-  const userName = (session?.user?.name as string | null) ?? null;
-  const userImage = (session?.user?.image as string | null) ?? null;
+export default function AppNav({
+  user,
+}: {
+  user: { name: string | null; image: string | null } | null;
+}) {
+  const isAuthed = !!user;
+  const userName = user?.name ?? null;
+  const userImage = user?.image ?? null;
 
   return (
     <nav className="navbar">

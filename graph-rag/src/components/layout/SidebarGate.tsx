@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Menu, Sparkles, LogOut, Settings } from "lucide-react";
+import { Menu, Sparkles, LogOut, Settings, Shield } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import Sidebar from "@/components/layout/Sidebar";
@@ -11,10 +11,11 @@ const PAGE_TITLES: Record<string, string> = {
   "/home": "Home",
   "/chat": "Chat",
   "/calendar": "Calendar",
+  "/notes": "Notes",
   "/profile": "Profile",
 };
 
-type UserInfo = { name: string | null; image: string | null } | null;
+type UserInfo = { name: string | null; image: string | null; email?: string | null; isAdmin?: boolean } | null;
 
 /** Conditionally renders Sidebar + mobile top bar on authenticated routes. */
 export default function SidebarGate({ user }: { user?: UserInfo }) {
@@ -44,6 +45,7 @@ export default function SidebarGate({ user }: { user?: UserInfo }) {
 
   const userName = user?.name ?? null;
   const userImage = user?.image ?? null;
+  const isAdmin = user?.isAdmin ?? false;
   const initial = (userName?.[0] ?? "U").toUpperCase();
 
   return (
@@ -100,6 +102,16 @@ export default function SidebarGate({ user }: { user?: UserInfo }) {
                 <Settings className="w-4 h-4 text-muted-foreground" />
                 Settings
               </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin/ai-access"
+                  onClick={() => setProfileOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
+                >
+                  <Shield className="w-4 h-4 text-muted-foreground" />
+                  AI Requests
+                </Link>
+              )}
               <Link
                 href="/api/auth/signout?callbackUrl=/"
                 onClick={() => setProfileOpen(false)}

@@ -7,16 +7,36 @@ logger = logging.getLogger("intellidoc.graph")
 
 
 class GraphClient:
-    def __init__(self) -> None:
-        uri = os.getenv("NEO4J_URI")
-        user = os.getenv("NEO4J_USERNAME") or os.getenv("NEO4J_USER")
-        pwd = os.getenv("NEO4J_PASSWORD")
-        if not uri or not user or not pwd:
-            raise RuntimeError("Neo4j env vars not set")
-        self._driver = GraphDatabase.driver(uri, auth=(user, pwd))
+    def __init__(self, driver=None) -> None:
+        """Create a GraphClient.
 
-    def close(self):
-        self._driver.close()
+        If *driver* is supplied the client borrows it without taking
+        ownership — ``close()`` becomes a no-op in that case.  This lets
+        long-lived tool instances share a single connection pool across
+        many requests without creating a new pool per call.
+        """
+        self._db = os.getenv("NEO4J_DATABASE") or None
+        if driver is not None:
+            self._driver = driver
+            self._owns_driver = False
+        else:
+            uri = os.getenv("NEO4J_URI")
+            user = os.getenv("NEO4J_USERNAME") or os.getenv("NEO4J_USER")
+            pwd = os.getenv("NEO4J_PASSWORD")
+            if not uri or not user or not pwd:
+                raise RuntimeError("Neo4j env vars not set")
+            self._driver = GraphDatabase.driver(uri, auth=(user, pwd))
+            self._owns_driver = True
+
+    def _session(self):
+        """Return a new session, passing database= if configured."""
+        if self._db:
+            return self._driver.session(database=self._db)
+        return self._driver.session()
+
+    def close(self) -> None:
+        if self._owns_driver:
+            self._driver.close()
 
     def upsert_user_folder_file(
         self,
@@ -64,7 +84,7 @@ class GraphClient:
             "s3Key": s3_key,
             "summary": summary,
         }
-        with self._driver.session() as session:
+        with self._session() as session:
             session.run(cypher, params)
 
     def upsert_file_chunks(self, file_id: str, chunks: list[dict], batch_size: int = 200) -> int:
@@ -79,7 +99,7 @@ class GraphClient:
         dim = len(chunks[0].get("embedding", [])) if chunks else 0
         if dim > 0:
             try:
-                with self._driver.session() as session:
+                with self._session() as session:
                     session.run(
                         """
                         CREATE VECTOR INDEX chunk_embedding_index IF NOT EXISTS
@@ -96,12 +116,12 @@ class GraphClient:
         WITH fi
         UNWIND $chunks AS ch
         MERGE (c:Chunk {chunkId: ch.id})
-          ON CREATE SET c.index = ch.index, c.text = ch.text, c.charStart = ch.charStart, c.charEnd = ch.charEnd, c.embedding = ch.embedding, c.createdAt = timestamp()
-          ON MATCH SET c.text = ch.text, c.charStart = ch.charStart, c.charEnd = ch.charEnd, c.embedding = ch.embedding, c.updatedAt = timestamp()
+          ON CREATE SET c.index = ch.index, c.text = ch.text, c.page = ch.page, c.charStart = ch.charStart, c.charEnd = ch.charEnd, c.embedding = ch.embedding, c.createdAt = timestamp()
+          ON MATCH SET c.text = ch.text, c.page = ch.page, c.charStart = ch.charStart, c.charEnd = ch.charEnd, c.embedding = ch.embedding, c.updatedAt = timestamp()
         MERGE (fi)-[:HAS_CHUNK]->(c)
         """
         total = 0
-        with self._driver.session() as session:
+        with self._session() as session:
             for i in range(0, len(chunks), batch_size):
                 batch = chunks[i : i + batch_size]
                 session.run(cypher, {"fileId": file_id, "chunks": batch})
@@ -119,7 +139,7 @@ class GraphClient:
         WITH e WHERE NOT exists( (e)<-[:MENTIONS]-() )
         DELETE e
         """
-        with self._driver.session() as session:
+        with self._session() as session:
             session.run(cypher, {"fileId": file_id})
 
     def delete_folder_by_id(self, folder_id: str):
@@ -134,7 +154,7 @@ class GraphClient:
         WITH e WHERE NOT exists( (e)<-[:MENTIONS]-() )
         DELETE e
         """
-        with self._driver.session() as session:
+        with self._session() as session:
             session.run(cypher, {"folderId": folder_id})
 
     # ------------------------------------------------------------------
@@ -143,7 +163,7 @@ class GraphClient:
 
     def ensure_entity_indexes(self) -> None:
         """Create indexes for Entity nodes if they don't exist."""
-        with self._driver.session() as session:
+        with self._session() as session:
             try:
                 session.run(
                     "CREATE INDEX entity_name_type IF NOT EXISTS "
@@ -172,7 +192,7 @@ class GraphClient:
           ON CREATE SET e.name = ent.name, e.createdAt = timestamp()
         MERGE (c)-[:MENTIONS]->(e)
         """
-        with self._driver.session() as session:
+        with self._session() as session:
             session.run(cypher, {"chunkId": chunk_id, "entities": entities})
         return len(entities)
 
@@ -212,6 +232,7 @@ class GraphClient:
         RETURN DISTINCT
             f.name AS file,
             c.text AS text,
+            c.page AS page,
             c.chunkId AS chunkId,
             se.name AS matchedEntity,
             se.type AS entityType,
@@ -221,7 +242,7 @@ class GraphClient:
         """
 
         items = []
-        with self._driver.session() as session:
+        with self._session() as session:
             rows = session.run(
                 cypher,
                 {"entityNames": normalized, "topK": top_k},
@@ -230,6 +251,7 @@ class GraphClient:
                 items.append({
                     "file": r["file"],
                     "text": r["text"],
+                    "page": r.get("page") or 0,
                     "chunkId": r["chunkId"],
                     "matchedEntity": r["matchedEntity"],
                     "entityType": r["entityType"],
@@ -259,6 +281,7 @@ class GraphClient:
             RETURN DISTINCT
                 f.name AS file,
                 c2.text AS text,
+                c2.page AS page,
                 c2.chunkId AS chunkId,
                 e2.name AS matchedEntity,
                 e2.type AS entityType,
@@ -267,7 +290,7 @@ class GraphClient:
             LIMIT $topK
             """
             existing_ids = {it["chunkId"] for it in items}
-            with self._driver.session() as session:
+            with self._session() as session:
                 rows = session.run(
                     cypher_2hop,
                     {"entityNames": normalized, "topK": top_k - len(items)},
@@ -277,6 +300,7 @@ class GraphClient:
                         items.append({
                             "file": r["file"],
                             "text": r["text"],
+                            "page": r.get("page") or 0,
                             "chunkId": r["chunkId"],
                             "matchedEntity": r["matchedEntity"],
                             "entityType": r["entityType"],
@@ -296,7 +320,7 @@ class GraphClient:
         # }
         files_map = {}
         folders_map = {}
-        with self._driver.session() as session:
+        with self._session() as session:
             # Root files (owned by user, not in any folder)
             res1 = session.run(
                 """
@@ -325,3 +349,13 @@ class GraphClient:
                 m[r.get("fileName", "unknown")] = r.get("summary")
 
         return {"userEmail": user_email, "files": files_map, "folders": folders_map}
+
+    def get_folder_files(self, folder_id: str) -> list[dict]:
+        """Return [{id, s3Key}] for every File inside a folder."""
+        cypher = (
+            "MATCH (f:Folder {folderId: $folderId})-[:CONTAINS]->(fi:File) "
+            "RETURN fi.fileId AS id, fi.s3Key AS s3Key"
+        )
+        with self._session() as session:
+            result = session.run(cypher, {"folderId": folder_id})
+            return [{"id": r["id"], "s3Key": r["s3Key"]} for r in result]

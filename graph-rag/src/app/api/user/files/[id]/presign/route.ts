@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 const AWS_REGION = process.env.AWS_REGION;
 const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
 const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
-const AWS_S3_BUCKET = process.env.AWS_S3_BUCKET || process.env.AWS_BUCKET_NAME;
+const AWS_BUCKET_NAME = process.env.AWS_BUCKET_NAME;
 
 const s3 = new S3Client({
   region: AWS_REGION,
@@ -36,9 +36,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'File not found' }, { status: 404 });
   }
 
-  const bucketName = AWS_S3_BUCKET;
+  const bucketName = AWS_BUCKET_NAME;
   if (!AWS_REGION || !bucketName) {
-    return NextResponse.json({ error: 'Missing AWS configuration (AWS_REGION/AWS_S3_BUCKET)' }, { status: 500 });
+    return NextResponse.json({ error: 'Missing AWS configuration (AWS_REGION/AWS_BUCKET_NAME)' }, { status: 500 });
   }
 
   try {
