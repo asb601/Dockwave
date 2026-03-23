@@ -11,10 +11,27 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Debug - Check secrets are set
+        run: |
+          echo "HOST is set: ${{ secrets.AGENT_EC2_HOST != '' }}"
+          echo "USERNAME is set: ${{ secrets.AGENT_EC2_USERNAME != '' }}"
+          echo "KEY is set: ${{ secrets.AGENT_EC2_PRIVATE_KEY != '' }}"
+          echo "ENV FILE is set: ${{ secrets.EC2_ENV_FILE != '' }}"
+
+      - name: Debug - Test DNS resolution
+        run: |
+          echo "=== nslookup ==="
+          nslookup ${{ secrets.AGENT_EC2_HOST }} || echo "nslookup failed"
+          echo "=== dig ==="
+          dig ${{ secrets.AGENT_EC2_HOST }} || echo "dig failed"
+          echo "=== ping test ==="
+          ping -c 2 ${{ secrets.AGENT_EC2_HOST }} || echo "ping failed"
+          echo "=== curl test ==="
+          curl -v --connect-timeout 5 telnet://${{ secrets.AGENT_EC2_HOST }}:22 || echo "curl to port 22 failed"
 
       - name: Setup SSH Agent
         uses: webfactory/ssh-agent@v0.9.0
@@ -23,23 +40,35 @@ jobs:
 
       - name: Add EC2 to known hosts
         run: |
-          ssh-keyscan -H ${{ secrets.AGENT_EC2_HOST }} >> ~/.ssh/known_hosts
+          echo "=== Attempting ssh-keyscan ==="
+          ssh-keyscan -v -T 30 -H ${{ secrets.AGENT_EC2_HOST }} >> ~/.ssh/known_hosts 2>&1 || echo "keyscan failed, trying IP directly"
+          echo "=== known_hosts content ==="
+          cat ~/.ssh/known_hosts
+
+      - name: Write env file
+        run: |
+          echo "${{ secrets.EC2_ENV_FILE }}" > /tmp/app.env
+          echo "Env file written, line count: $(wc -l < /tmp/app.env)"
+
+      - name: Copy env file to EC2
+        run: |
+          scp -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=30 \
+              /tmp/app.env \
+              ${{ secrets.AGENT_EC2_USERNAME }}@${{ secrets.AGENT_EC2_HOST }}:/home/ubuntu/Dockwave/ai/.env
 
       - name: Deploy to EC2
         run: |
-          ssh ${{ secrets.AGENT_EC2_USERNAME }}@${{ secrets.AGENT_EC2_HOST }} << 'EOF'
-
+          ssh -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=30 \
+              -o ServerAliveInterval=60 \
+              ${{ secrets.AGENT_EC2_USERNAME }}@${{ secrets.AGENT_EC2_HOST }} << 'EOF'
             set -e
-
             echo "🚀 Starting deployment..."
-
             cd /home/ubuntu/Dockwave
 
             echo "📥 Pulling latest code..."
             git pull origin main
-
-            echo "📝 Creating .env file..."
-            echo "${{ secrets.EC2_ENV_FILE }}" > /home/ubuntu/Dockwave/ai/.env
 
             echo "📦 Installing dependencies..."
             cd ai
@@ -50,5 +79,4 @@ jobs:
             sudo systemctl restart dockwave-ai
 
             echo "✅ Deployment completed!"
-
           EOF
