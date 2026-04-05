@@ -1,7 +1,25 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * GET /api/ai-access/approve?token=xxx
+ *
+ * Requires admin session authentication AND a valid request token.
+ * This prevents unauthorized approval if the token URL leaks.
+ */
 export async function GET(req: Request) {
+  // --- Admin auth check ---
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email || !isAdminEmail(session.user.email)) {
+    return NextResponse.json(
+      { error: "Admin authentication required" },
+      { status: 403 }
+    );
+  }
+
   const { searchParams } = new URL(req.url);
   const token = searchParams.get("token");
 
@@ -19,7 +37,6 @@ export async function GET(req: Request) {
   }
 
   if (request.status === "APPROVED") {
-    // Already approved — redirect to a success page
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
     return NextResponse.redirect(`${baseUrl}/ai-access/approved?already=true`);
   }

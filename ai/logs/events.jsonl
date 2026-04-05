@@ -1,0 +1,83 @@
+{"ts": "2026-04-03T15:35:10.838031+00:00", "type": "llm.call", "provider": "azure-openai", "deployment": "gpt-4o-mini", "prompt_tokens": 330, "completion_tokens": 23, "total_tokens": 353, "estimated_cost_usd": 0.0}
+{"ts": "2026-04-03T15:35:10.838341+00:00", "type": "tool.invoke", "tool": "get_meetings", "start": "2026-03-27", "end": "2026-04-03", "user_email": "asb.bharath601@gmail.com"}
+{"ts": "2026-04-03T15:35:13.395339+00:00", "type": "llm.call", "provider": "azure-openai", "deployment": "gpt-4o-mini", "prompt_tokens": 111, "completion_tokens": 30, "total_tokens": 141, "estimated_cost_usd": 0.0}
+{"ts": "2026-04-03T15:42:51.648232+00:00", "type": "llm.call", "provider": "azure-openai", "deployment": "gpt-4o-mini", "prompt_tokens": 330, "completion_tokens": 23, "total_tokens": 353, "estimated_cost_usd": 0.0}
+{"ts": "2026-04-03T15:42:51.667126+00:00", "type": "tool.invoke", "tool": "get_meetings", "start": "2026-03-27", "end": "2026-04-03", "user_email": "asb.bharath601@gmail.com"}
+{"ts": "2026-04-03T15:42:54.466055+00:00", "type": "llm.call", "provider": "azure-openai", "deployment": "gpt-4o-mini", "prompt_tokens": 111, "completion_tokens": 23, "total_tokens": 134, "estimated_cost_usd": 0.0}
+{"ts": "2026-04-03T16:48:21.290231+00:00", "type": "query.rewrite", "original": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "rewritten": "Hey fine summarize and files whats", "sub_queries": 1, "method": "keyword"}
+{"ts": "2026-04-03T16:48:21.557782+00:00", "type": "search.graph", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 15}
+{"ts": "2026-04-03T16:48:22.181551+00:00", "type": "search.vector", "query": "The answer to 'Hey so fine could u just summarize and tell me what files i have ? and whats it about ?' is as follows: H", "results": 10}
+{"ts": "2026-04-03T16:48:22.185444+00:00", "type": "search.vector", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 25}
+{"ts": "2026-04-03T16:48:23.169291+00:00", "type": "search.entity_graph", "entities": ["fine", "just", "summarize", "tell", "files"], "results": 0}
+{"ts": "2026-04-04T04:14:58.264501+00:00", "type": "query.rewrite", "original": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "rewritten": "Hey fine summarize and files whats", "sub_queries": 1, "method": "keyword"}
+{"ts": "2026-04-04T04:14:58.418662+00:00", "type": "search.graph", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 15}
+{"ts": "2026-04-04T04:15:00.092960+00:00", "type": "search.entity_graph", "entities": ["fine", "just", "summarize", "tell", "files"], "results": 0}
+{"ts": "2026-04-04T04:15:00.524799+00:00", "type": "search.vector", "query": "The answer to 'Hey so fine could u just summarize and tell me what files i have ? and whats it about ?' is as follows: H", "results": 10}
+{"ts": "2026-04-04T04:15:00.527110+00:00", "type": "search.vector", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 25}
+{"ts": "2026-04-04T04:41:16.626967+00:00", "type": "query.rewrite", "original": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "rewritten": "Hey fine summarize and files whats", "sub_queries": 1, "method": "keyword"}
+{"ts": "2026-04-04T04:41:16.775960+00:00", "type": "search.graph", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 15}
+{"ts": "2026-04-04T04:41:17.229019+00:00", "type": "search.vector", "query": "The answer to 'Hey so fine could u just summarize and tell me what files i have ? and whats it about ?' is as follows: H", "results": 10}
+{"ts": "2026-04-04T04:41:17.232106+00:00", "type": "search.vector", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 25}
+{"ts": "2026-04-04T04:41:18.328333+00:00", "type": "search.entity_graph", "entities": ["fine", "just", "summarize", "tell", "files"], "results": 0}
+{"ts": "2026-04-04T04:41:19.224202+00:00", "type": "iteration.eval", "iter": 1, "total": 50, "top": 20, "confidence": 0.2127}
+{"ts": "2026-04-04T04:41:19.403258+00:00", "type": "search.graph", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 15}
+{"ts": "2026-04-04T04:41:19.659727+00:00", "type": "search.vector", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 25}
+{"ts": "2026-04-04T04:41:19.928531+00:00", "type": "search.entity_graph", "entities": ["fine", "just", "summarize", "tell", "files"], "results": 0}
+{"ts": "2026-04-04T04:41:23.785976+00:00", "type": "iteration.eval", "iter": 2, "total": 90, "top": 20, "confidence": 0.2127}
+{"ts": "2026-04-04T04:41:23.845118+00:00", "type": "search.graph", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 15}
+{"ts": "2026-04-04T04:41:24.236567+00:00", "type": "search.vector", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 25}
+{"ts": "2026-04-04T04:41:24.506106+00:00", "type": "search.entity_graph", "entities": ["fine", "just", "summarize", "tell", "files"], "results": 0}
+{"ts": "2026-04-04T04:41:25.238223+00:00", "type": "iteration.eval", "iter": 3, "total": 130, "top": 20, "confidence": 0.2127}
+{"ts": "2026-04-04T04:41:25.294455+00:00", "type": "search.graph", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 15}
+{"ts": "2026-04-04T04:41:25.661639+00:00", "type": "search.vector", "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "results": 25}
+{"ts": "2026-04-04T04:41:26.224741+00:00", "type": "search.entity_graph", "entities": ["fine", "just", "summarize", "tell", "files"], "results": 0}
+{"ts": "2026-04-04T04:41:26.951378+00:00", "type": "iteration.eval", "iter": 4, "total": 170, "top": 20, "confidence": 0.2127}
+{"ts": "2026-04-04T04:41:30.607041+00:00", "type": "llm.call", "provider": "azure-openai", "deployment": "gpt-4o-mini", "prompt_tokens": 9922, "completion_tokens": 136, "total_tokens": 10058, "estimated_cost_usd": 0.0}
+{"ts": "2026-04-04T04:41:30.609071+00:00", "type": "answer.eval", "confidence": 0.212668592, "evidence_score": 0.6071428571428571, "hallucination_score": 0.0, "status": "grounded"}
+{"ts": "2026-04-04T04:42:14.152026+00:00", "type": "query.rewrite", "original": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give det", "rewritten": "Its great you scheduled meeting but the notes look once again research papers and detialed sumamry", "sub_queries": 1, "method": "keyword"}
+{"ts": "2026-04-04T04:42:14.262802+00:00", "type": "search.graph", "query": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give det", "results": 15}
+{"ts": "2026-04-04T04:42:14.723176+00:00", "type": "search.vector", "query": "The answer to 'Its great that you have scheduled meeting but the notes could u look at it once again ? the research pape", "results": 10}
+{"ts": "2026-04-04T04:42:14.745523+00:00", "type": "search.vector", "query": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give det", "results": 25}
+{"ts": "2026-04-04T04:42:15.572295+00:00", "type": "search.entity_graph", "entities": ["great", "scheduled", "meeting", "notes", "look"], "results": 0}
+{"ts": "2026-04-04T04:42:16.481021+00:00", "type": "iteration.eval", "iter": 1, "total": 50, "top": 20, "confidence": 0.1477}
+{"ts": "2026-04-04T04:42:16.583575+00:00", "type": "search.graph", "query": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give det", "results": 15}
+{"ts": "2026-04-04T04:42:17.005374+00:00", "type": "search.vector", "query": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give det", "results": 25}
+{"ts": "2026-04-04T04:42:18.067376+00:00", "type": "search.entity_graph", "entities": ["great", "scheduled", "meeting", "notes", "look"], "results": 0}
+{"ts": "2026-04-04T04:42:19.732342+00:00", "type": "iteration.eval", "iter": 2, "total": 90, "top": 20, "confidence": 0.1477}
+{"ts": "2026-04-04T04:42:19.809831+00:00", "type": "search.graph", "query": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give det", "results": 15}
+{"ts": "2026-04-04T04:42:20.218250+00:00", "type": "search.vector", "query": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give det", "results": 25}
+{"ts": "2026-04-04T04:42:20.436282+00:00", "type": "search.entity_graph", "entities": ["great", "scheduled", "meeting", "notes", "look"], "results": 0}
+{"ts": "2026-04-04T04:42:23.066720+00:00", "type": "iteration.eval", "iter": 3, "total": 130, "top": 20, "confidence": 0.1477}
+{"ts": "2026-04-04T04:42:23.154718+00:00", "type": "search.graph", "query": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give det", "results": 15}
+{"ts": "2026-04-04T04:42:23.623580+00:00", "type": "search.vector", "query": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give det", "results": 25}
+{"ts": "2026-04-04T04:42:23.761552+00:00", "type": "search.entity_graph", "entities": ["great", "scheduled", "meeting", "notes", "look"], "results": 0}
+{"ts": "2026-04-04T04:42:24.430900+00:00", "type": "iteration.eval", "iter": 4, "total": 170, "top": 20, "confidence": 0.1477}
+{"ts": "2026-04-04T04:42:26.181978+00:00", "type": "llm.call", "provider": "azure-openai", "deployment": "gpt-4o-mini", "prompt_tokens": 8991, "completion_tokens": 10, "total_tokens": 9001, "estimated_cost_usd": 0.0}
+{"ts": "2026-04-04T04:42:26.182899+00:00", "type": "answer.eval", "confidence": 0.147710264, "evidence_score": 0.8, "hallucination_score": 0.0, "status": "grounded"}
+{"ts": "2026-04-04T07:19:32.914741+00:00", "type": "llm.call", "provider": "azure-openai", "deployment": "gpt-4o-mini", "prompt_tokens": 1173, "completion_tokens": 11, "total_tokens": 1184, "estimated_cost_usd": 0.00018255, "node": "brain", "step": 1}
+{"ts": "2026-04-04T07:19:32.918949+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-04T07:50:10.337733+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-04T07:58:33.601187+00:00", "type": "search.graph", "query": "LLM training for law", "results": 12}
+{"ts": "2026-04-04T07:58:34.321707+00:00", "type": "search.vector", "query": "The answer to 'LLM training for law' is as follows: ", "results": 10}
+{"ts": "2026-04-04T07:58:34.335501+00:00", "type": "search.vector", "query": "LLM training for law", "results": 20}
+{"ts": "2026-04-04T07:58:35.655535+00:00", "type": "search.entity_graph", "entities": ["LLM Training", "Law"], "results": 2}
+{"ts": "2026-04-04T07:58:45.952109+00:00", "type": "guardrail.hallucination", "score": 0.5714285714285714, "evidence": 0.37267080745341613}
+{"ts": "2026-04-04T07:58:45.952672+00:00", "type": "answer.eval", "evidence_score": 0.37267080745341613, "hallucination_score": 0.5714285714285714, "status": "hallucination_warning"}
+{"ts": "2026-04-04T08:04:33.303235+00:00", "type": "search.graph", "query": "LLM training for law", "results": 12}
+{"ts": "2026-04-04T08:04:35.154924+00:00", "type": "search.vector", "query": "The answer to 'LLM training for law' is as follows: ", "results": 10}
+{"ts": "2026-04-04T08:04:35.174035+00:00", "type": "search.vector", "query": "LLM training for law", "results": 20}
+{"ts": "2026-04-04T08:04:36.164894+00:00", "type": "search.entity_graph", "entities": ["LLM Training", "Law"], "results": 2}
+{"ts": "2026-04-04T08:04:46.051245+00:00", "type": "guardrail.hallucination", "score": 0.5833333333333334, "evidence": 0.40789473684210525}
+{"ts": "2026-04-04T08:04:46.051431+00:00", "type": "answer.eval", "evidence_score": 0.40789473684210525, "hallucination_score": 0.5833333333333334, "status": "hallucination_warning"}
+{"ts": "2026-04-05T08:36:10.140533+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-05T08:36:10.151658+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-05T08:36:10.161636+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-05T08:36:10.171025+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-05T08:36:10.181233+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-05T08:36:10.190128+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-05T08:36:54.589057+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-05T08:36:54.600961+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-05T08:36:54.610340+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-05T08:36:54.619170+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-05T08:36:54.630733+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}
+{"ts": "2026-04-05T08:36:54.639328+00:00", "type": "answer.eval", "evidence_score": 0.0, "hallucination_score": 0.0, "status": "complete"}

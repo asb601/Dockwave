@@ -1,0 +1,979 @@
+"""LangGraph-based agent orchestration.
+
+Replaces the manual for-loop in BrainAgent.graph_rag() and the
+if/else routing in orchestrator.py with a declarative state machine.
+
+Nodes call the EXISTING tool classes (VectorSearchTool, GraphSearchTool,
+etc.) — no LangChain retrievers or wrappers are used.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import os
+import re
+from typing import Any, Dict, List
+
+from langgraph.graph import END, StateGraph
+from langsmith import traceable
+from typing_extensions import TypedDict
+
+from app.agents.rerank import cohere_rerank, hybrid_rerank, naive_rerank
+from app.core.tool_registry import ToolRegistry
+from app.services.memory import append_message, get_history
+from app.util.log import log_brain_event, log_event
+from app.util.prompts import summarize_prompt
+
+logger = logging.getLogger("intellidoc.graph")
+
+
+# ── State ──────────────────────────────────────────────────────────────────
+
+class AgentState(TypedDict, total=False):
+    """Mutable state that flows through every node."""
+    goal: str
+    user_email: str
+    session_id: str
+    # Routing
+    routing: Dict[str, bool]
+    # Search state
+    query: str
+    rewritten_query: str
+    sub_queries: List[str]
+    collected: List[Dict[str, Any]]
+    top_chunks: List[Dict[str, Any]]
+    confidence: float
+    iteration: int
+    max_iters: int
+    min_hits: int
+    conf_threshold: float
+    # Action results
+    action_results: Dict[str, Any]
+    # Output
+    answer: str
+    sources: List[Dict[str, Any]]
+    evidence_score: float
+    status: str
+    scratchpad: List[str]
+    errors: List[str]
+    search_failed: bool
+    # Chat history for context
+    history: List[Dict[str, str]]
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+
+def _evidence_score(answer: str, chunks: List[Dict[str, Any]]) -> float:
+    src = " \n ".join((c.get("text") or "") for c in chunks[:10]).lower()
+    toks = [t for t in re.findall(r"[a-zA-Z0-9_]+", (answer or "").lower()) if len(t) > 3]
+    if not toks:
+        return 0.0
+    distinct = list(dict.fromkeys(toks))
+    hits = sum(1 for t in distinct if t in src)
+    return hits / max(1, len(distinct))
+
+
+# ── Node functions ─────────────────────────────────────────────────────────
+
+def _build_route_node(registry: ToolRegistry):
+    """Fast keyword-based router — no LLM call needed.
+
+    Saves one LLM round-trip per request.  Pattern-matches the user's
+    goal to decide which capabilities are required.  Falls back to
+    ``graph_rag`` (document Q&A) for anything that doesn't match a
+    known action pattern.
+    """
+
+    _GREETING_WORDS = {
+        "hi", "hello", "hey", "howdy", "sup", "yo", "thanks", "thank",
+        "bye", "goodbye", "good morning", "good evening", "good night",
+        "how are you", "what's up", "whats up",
+    }
+
+    _CALENDAR_PATTERNS = re.compile(
+        r"\b(meeting|meetings|calendar|schedule|event|events|"
+        r"what('s| is) (on|happening|scheduled)|agenda|upcoming)\b", re.I,
+    )
+    _CREATE_EVENT_PATTERNS = re.compile(
+        r"\b(create|add|schedule|set up|book)\b.*\b(meeting|event|appointment|call)\b", re.I,
+    )
+    _CREATE_TASK_PATTERNS = re.compile(
+        r"\b(create|add|make|new)\b.*\b(task|todo|to-do|reminder)\b", re.I,
+    )
+    _CREATE_NOTE_PATTERNS = re.compile(
+        r"\b(create|add|make|write|new)\b.*\b(note|notes)\b", re.I,
+    )
+    _EDIT_NOTE_PATTERNS = re.compile(
+        r"\b(edit|update|modify|change)\b.*\b(note|notes)\b", re.I,
+    )
+    _DOC_PATTERNS = re.compile(
+        r"\b(research|paper|papers|pdf|document|documents|uploaded|file|files|"
+        r"summarize|summarise|summary|content|chapter|section|read|review)\b", re.I,
+    )
+
+    @traceable(name="route")
+    async def route_node(state: AgentState) -> dict:
+        goal = state["goal"]
+        goal_lower = goal.lower().strip()
+
+        plan: Dict[str, bool] = {
+            "graph_rag": False,
+            "get_meetings": False,
+            "create_event": False,
+            "create_task": False,
+            "create_note": False,
+            "edit_note": False,
+        }
+
+        # 1. Pure greeting — free, no LLM needed
+        if goal_lower in _GREETING_WORDS or any(
+            goal_lower.startswith(g) for g in _GREETING_WORDS if len(g) > 3
+        ):
+            log_brain_event("orchestration_plan", {"goal": goal, "plan": plan, "method": "keyword"})
+            return {"routing": plan, "scratchpad": state.get("scratchpad", []) + [f"Route (greeting): {plan}"]}
+
+        # 2. Use LLM tool-calling router for everything else — accurate multi-intent handling
+        llm_router = registry.get("llm_router")
+        if llm_router:
+            try:
+                history = state.get("history") or []
+                resp = await llm_router.run(question=goal, history=history)
+                answer = resp.get("answer", "{}")
+                import json as _json
+                parsed = _json.loads(answer) if isinstance(answer, str) else answer
+                for key in plan:
+                    if parsed.get(key) is True:
+                        plan[key] = True
+                if any(plan.values()):
+                    log_brain_event("orchestration_plan", {"goal": goal, "plan": plan, "method": "tool-calling"})
+                    return {"routing": plan, "scratchpad": state.get("scratchpad", []) + [f"Route (tool-calling): {plan}"]}
+            except Exception as exc:
+                logger.warning("LLM router failed, falling back to keywords: %s", exc)
+
+        # 3. Keyword fallback — only if LLM router is unavailable or fails
+        if _CREATE_EVENT_PATTERNS.search(goal):
+            plan["create_event"] = True
+        if _CREATE_TASK_PATTERNS.search(goal):
+            plan["create_task"] = True
+        if _EDIT_NOTE_PATTERNS.search(goal):
+            plan["edit_note"] = True
+        elif _CREATE_NOTE_PATTERNS.search(goal):
+            plan["create_note"] = True
+        if _CALENDAR_PATTERNS.search(goal) and not plan["create_event"]:
+            plan["get_meetings"] = True
+        if not plan["graph_rag"] and _DOC_PATTERNS.search(goal):
+            plan["graph_rag"] = True
+        if not any(plan.values()):
+            plan["graph_rag"] = True
+
+        log_brain_event("orchestration_plan", {"goal": goal, "plan": plan, "method": "keyword-fallback"})
+        return {"routing": plan, "scratchpad": state.get("scratchpad", []) + [f"Route (fallback): {plan}"]}
+    return route_node
+
+
+def _build_rewrite_node(registry: ToolRegistry):
+
+    _STOP_WORDS = {
+        "what", "which", "where", "when", "who", "whom", "whose", "why", "how",
+        "that", "this", "these", "those", "there", "their", "from", "with",
+        "about", "does", "have", "been", "will", "would", "could", "should",
+        "into", "also", "than", "then", "very", "just", "more", "most", "some",
+        "each", "much", "many", "such", "only", "other", "over", "under",
+        "between", "through", "after", "before", "during", "without", "within",
+        "tell", "explain", "describe", "give", "please", "answer", "question",
+        "using", "used", "instead", "paper", "document", "according",
+    }
+
+    # ── Multi-hop detection patterns ──
+    _MULTI_HOP_PATTERNS = re.compile(
+        r"\b(compare|contrast|difference|differences|different|vs\.?|versus|"
+        r"similarities|similarity|relate|relationship|between|both|each|"
+        r"how does .+ differ|what are the .+ and .+)\b", re.I,
+    )
+    _CONJUNCTION_SPLIT = re.compile(
+        r"\b(?:and also|and then|and|but also|, and|; also|; )\b", re.I,
+    )
+
+    def _decompose_query(goal: str) -> List[str]:
+        """Split a multi-hop question into independent sub-queries.
+
+        Returns a list of 1-3 sub-queries.  For simple questions,
+        returns a single-element list with the original goal.
+        """
+        # Check for comparison patterns: "Compare X and Y"
+        cmp = re.match(
+            r"(?:compare|contrast|what (?:are )?(?:the )?differences? between)\s+(.+?)\s+(?:and|vs\.?|versus)\s+(.+?)(?:\?|$)",
+            goal, re.I,
+        )
+        if cmp:
+            a, b = cmp.group(1).strip(), cmp.group(2).strip()
+            return [f"What is {a}?", f"What is {b}?", goal]
+
+        # Check for conjunction-joined sub-questions
+        if _MULTI_HOP_PATTERNS.search(goal):
+            parts = _CONJUNCTION_SPLIT.split(goal)
+            parts = [p.strip().rstrip("?").strip() for p in parts if len(p.strip()) > 10]
+            if len(parts) >= 2:
+                return parts[:3]
+
+        return [goal]
+
+    @traceable(name="rewrite_query")
+    async def rewrite_node(state: AgentState) -> dict:
+        """Rewrite the user's question into keyword-dense search queries.
+
+        1. Resolves references from conversation history.
+        2. Detects multi-hop questions and decomposes into sub-queries.
+        3. Extracts keywords from each sub-query for search.
+        """
+        goal = state["goal"]
+
+        # ── Resolve references using conversation history ──
+        history = state.get("history") or []
+        if history:
+            # Extract key nouns/topics from recent assistant messages to resolve
+            # pronouns like "it", "the notes", "the research papers"
+            recent_topics: List[str] = []
+            for msg in history[-4:]:
+                if msg.get("role") == "assistant":
+                    text = (msg.get("content") or "")[:500]
+                    # Pull out capitalized multi-word terms and quoted phrases
+                    entities = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b', text)
+                    recent_topics.extend(entities[:5])
+            if recent_topics:
+                # Append recent topics so search picks them up
+                topic_str = " ".join(dict.fromkeys(recent_topics))[:200]
+                goal = f"{goal} {topic_str}"
+
+        # ── Query decomposition ──
+        sub_queries = _decompose_query(goal)
+        all_keywords: List[str] = []
+        seen: set = set()
+
+        for sq in sub_queries:
+            tokens = re.findall(r"[A-Za-z][A-Za-z0-9_-]{2,}", sq)
+            for t in tokens:
+                low = t.lower()
+                if low not in _STOP_WORDS and low not in seen:
+                    seen.add(low)
+                    all_keywords.append(t)
+
+        # Store sub-queries in state for the search node to use
+        rewritten = " ".join(all_keywords[:20]) if all_keywords else goal
+        method = "decompose+keyword" if len(sub_queries) > 1 else "keyword"
+
+        log_event("query.rewrite", {
+            "original": goal[:120], "rewritten": rewritten[:120],
+            "sub_queries": len(sub_queries), "method": method,
+        })
+        return {
+            "rewritten_query": rewritten, "query": rewritten, "iteration": 1,
+            "sub_queries": sub_queries,
+            "scratchpad": state.get("scratchpad", []) + [
+                f"Rewritten ({method}): {rewritten!r} [{len(sub_queries)} sub-q]"
+            ],
+        }
+    return rewrite_node
+
+
+def _build_search_node(registry: ToolRegistry):
+    @traceable(name="search")
+    async def search_node(state: AgentState) -> dict:
+        """Run triple search (vector + fulltext + entity graph) in parallel.
+
+        Enhancements:
+        - Sub-query fan-out: when query decomposition produced multiple
+          sub-queries, each one is searched independently and results merged.
+        - HyDE (Hypothetical Document Embeddings): on the first iteration,
+          generates a short hypothetical answer passage and includes it as
+          an extra vector query to improve recall for vague questions.
+        """
+        primary_query = state.get("query") or state["goal"]
+        user_email = state.get("user_email") or ""
+        collected = list(state.get("collected") or [])
+        errors = list(state.get("errors") or [])
+        iteration = state.get("iteration", 1)
+        sub_queries = state.get("sub_queries") or [primary_query]
+
+        # Track chunk IDs already collected to deduplicate across retries
+        seen_ids: set = {c.get("chunkId") for c in collected if c.get("chunkId")}
+
+        vtool = registry.get("vector_search")
+        gtool = registry.get("graph_search")
+        egtool = registry.get("entity_graph_search")
+
+        tool_errors: List[str] = []
+        tool_count = sum(1 for t in (vtool, gtool, egtool) if t)
+
+        async def _run(tool, name, k, query):
+            if not tool:
+                return []
+            try:
+                out = await tool.run(query=query, top_k=k, user_email=user_email)
+                if out.get("error"):
+                    errors.append(f"{name}: {out['error']}")
+                    tool_errors.append(name)
+                items = out.get("items", [])
+                for i, item in enumerate(items):
+                    item = dict(item)
+                    item.setdefault("source", name)
+                    item.setdefault("initial_rank", i)
+                    cid = item.get("chunkId")
+                    if cid and cid in seen_ids:
+                        continue
+                    if cid:
+                        seen_ids.add(cid)
+                    collected.append(item)
+                return items
+            except Exception as exc:
+                errors.append(f"{name}: {exc}")
+                tool_errors.append(name)
+                return []
+
+        # ── HyDE: generate hypothetical answer for vector search ──
+        hyde_query = None
+        if iteration == 1 and vtool:
+            # Build a short pseudo-document from the question for embedding
+            goal = state["goal"]
+            hyde_query = (
+                f"The answer to '{goal}' is as follows: "
+                f"{' '.join(re.findall(r'[A-Za-z][a-z]{2,}', goal)[:12])}"
+            )
+
+        # ── Fan-out: search each sub-query across all three tools ──
+        tasks = []
+        # Scale top_k per sub-query inversely with count
+        n_sq = len(sub_queries)
+        vk = max(10, 25 // n_sq)
+        gk = max(5, 15 // n_sq)
+
+        for sq in sub_queries[:3]:
+            tasks.append(_run(vtool, "vector", vk, sq))
+            tasks.append(_run(gtool, "graph", gk, sq))
+            tasks.append(_run(egtool, "entity_graph", gk, sq))
+
+        # Add HyDE query as extra vector search
+        if hyde_query:
+            tasks.append(_run(vtool, "vector_hyde", 10, hyde_query))
+
+        await asyncio.gather(*tasks)
+
+        # If ALL configured tools errored, mark as backend failure
+        search_failed = tool_count > 0 and len(tool_errors) >= tool_count
+
+        log_brain_event("iteration.start", {
+            "iter": iteration, "query": primary_query[:200], "collected_so_far": len(collected),
+            "search_failed": search_failed,
+        })
+
+        return {"collected": collected, "errors": errors, "search_failed": search_failed}
+    return search_node
+
+
+def _build_rerank_node():
+    @traceable(name="rerank")
+    async def rerank_node(state: AgentState) -> dict:
+        """Hybrid RRF rerank → Cohere semantic rerank."""
+        collected = state.get("collected") or []
+        goal = state["goal"]
+
+        # Stage 1: Hybrid RRF
+        top = hybrid_rerank(collected, goal, top_k=50) or naive_rerank(collected, goal, top_k=50)
+
+        # Stage 2: Cohere semantic rerank on the top 50
+        if top:
+            top = await cohere_rerank(top, goal, top_k=20)
+
+        scores = [
+            c.get("rerank_score", c.get("score", 0))
+            for c in top[:5]
+            if isinstance(c.get("rerank_score", c.get("score")), (int, float))
+        ]
+        confidence = sum(scores) / max(1, len(scores)) if scores else 0.0
+
+        iteration = state.get("iteration", 1)
+        metric = {
+            "iter": iteration, "total": len(collected),
+            "top": len(top), "confidence": round(confidence, 4),
+        }
+        log_event("iteration.eval", metric)
+        log_brain_event("iteration.eval", metric)
+
+        return {
+            "top_chunks": top, "confidence": confidence,
+            "scratchpad": state.get("scratchpad", []) + [
+                f"Iter {iteration}: {len(collected)} chunks → top {len(top)}, conf={confidence:.3f}"
+            ],
+        }
+    return rerank_node
+
+
+def _hallucination_score(answer: str, chunks: List[Dict[str, Any]]) -> float:
+    """Estimate probability of hallucination.
+
+    Checks whether numbers, percentages, and capitalized entity names in the
+    answer actually appear in the source chunks.  Returns a score in [0, 1]
+    where 0 = fully grounded, 1 = every claim is unsupported.
+    """
+    src = " ".join((c.get("text") or "") for c in chunks[:15]).lower()
+
+    # Extract verifiable claims: numbers, percentages, capitalized terms
+    numbers = re.findall(r"\b\d+(?:\.\d+)?%?\b", answer)
+    # Named entities: capitalized multi-word terms (e.g. "Reinforcement Learning")
+    entities = re.findall(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b", answer)
+
+    claims = numbers + [e.lower() for e in entities]
+    if not claims:
+        return 0.0  # Nothing to check — assume grounded
+
+    unsupported = sum(1 for c in claims if c.lower() not in src)
+    return unsupported / len(claims)
+
+
+def _build_synthesize_node(registry: ToolRegistry):
+    @traceable(name="synthesize")
+    async def synthesize_node(state: AgentState) -> dict:
+        """LLM synthesis with evidence scoring, hallucination detection, and citations."""
+        goal = state["goal"]
+        chunks = state.get("top_chunks") or []
+        history = state.get("history") or []
+        llm = registry.get("llm_summarize")
+        min_ev = float(os.getenv("MIN_EVIDENCE", "0.20"))
+        max_halluc = float(os.getenv("MAX_HALLUCINATION", "0.40"))
+
+        if not llm:
+            parts = [f"- {c.get('file')}: {(c.get('text') or '')[:200]}" for c in chunks[:8]]
+            answer = "\n".join([f"Question: {goal}", "Relevant passages:"] + parts)
+            return {"answer": answer, "status": "stub"}
+
+        # Build history context for follow-ups
+        history_ctx = ""
+        if history:
+            history_lines = []
+            for msg in history[-6:]:
+                role = msg.get("role", "user")
+                content = (msg.get("content") or "")[:500]
+                history_lines.append(f"{role}: {content}")
+            history_ctx = (
+                "\n\nPrevious conversation:\n" + "\n".join(history_lines) + "\n\n"
+                "Use the conversation history to resolve pronouns and references "
+                "(like 'it', 'that', 'the second one', etc.).\n"
+            )
+
+        try:
+            effective_question = f"{goal}\n{history_ctx}" if history_ctx else goal
+            resp = await llm.run(
+                question=effective_question, prompt=summarize_prompt, chunks=chunks
+            )
+            answer = resp.get("answer", "")
+        except Exception as exc:
+            logger.exception("Synthesis failed")
+            answer = f"Synthesis failed: {exc}"
+
+        ev = _evidence_score(answer, chunks)
+        halluc = _hallucination_score(answer, chunks)
+
+        # ── Output guardrails ──
+        status = "grounded"
+        if halluc > max_halluc:
+            # High hallucination detected — prepend warning and downgrade status
+            answer = (
+                "**Note:** Some claims in this answer could not be verified against "
+                "the source documents. Please cross-check the details.\n\n" + answer
+            )
+            status = "hallucination_warning"
+            log_event("guardrail.hallucination", {"score": halluc, "evidence": ev})
+        elif ev < min_ev:
+            status = "insufficient"
+
+        if status == "insufficient":
+            if state.get("search_failed"):
+                answer = "Search service is temporarily unavailable. Please try again in a moment.\n\n" + (answer or "")
+                status = "search_error"
+            else:
+                answer = "The documents do not contain enough information to answer precisely.\n\n" + (answer or "")
+
+        seen: set = set()
+        sources: List[Dict[str, Any]] = []
+        for c in chunks[:12]:
+            key = (c.get("file") or "unknown", c.get("page") or 0)
+            if key not in seen:
+                seen.add(key)
+                sources.append({
+                    "file": key[0], "page": key[1] or None,
+                    "preview": (c.get("text") or "")[:120].replace("\n", " "),
+                })
+
+        log_event("answer.eval", {
+            "confidence": state.get("confidence"), "evidence_score": ev,
+            "hallucination_score": halluc, "status": status,
+        })
+
+        # Save assistant message to memory
+        session_id = state.get("session_id")
+        if session_id:
+            append_message(session_id, "assistant", answer, user_email=state.get("user_email", ""))
+
+        return {
+            "answer": answer, "sources": sources, "evidence_score": ev, "status": status,
+            "scratchpad": state.get("scratchpad", []) + [f"Synthesis: ev={ev:.2f} status={status}"],
+        }
+    return synthesize_node
+
+
+def _build_action_node(registry: ToolRegistry):
+    """Handle non-RAG actions: calendar, notes, tasks."""
+    from app.agents.actions import (
+        get_meetings,
+        handle_create_event,
+        handle_create_task,
+        handle_create_note,
+        handle_edit_note,
+    )
+
+    @traceable(name="execute_actions")
+    async def action_node(state: AgentState) -> dict:
+        """Execute calendar/note/task actions concurrently."""
+        routing = state.get("routing") or {}
+        goal = state["goal"]
+        user_email = state.get("user_email") or ""
+
+        results: Dict[str, Any] = {}
+        tasks = []
+
+        if routing.get("get_meetings"):
+            tasks.append(("meetings", get_meetings(registry, goal, user_email)))
+        if routing.get("create_event"):
+            tasks.append(("create_event", handle_create_event(registry, goal, user_email)))
+        if routing.get("create_task"):
+            tasks.append(("create_task", handle_create_task(registry, goal, user_email)))
+        if routing.get("create_note"):
+            # Pass RAG chunks and history so the note can include document content
+            chunks = state.get("top_chunks") or []
+            history = state.get("history") or []
+            tasks.append(("create_note", handle_create_note(registry, goal, user_email, chunks=chunks, history=history)))
+        if routing.get("edit_note"):
+            tasks.append(("edit_note", handle_edit_note(registry, goal, user_email)))
+
+        if tasks:
+            outs = await asyncio.gather(*[t[1] for t in tasks], return_exceptions=True)
+            for (name, _), out in zip(tasks, outs):
+                if isinstance(out, Exception):
+                    results[name] = {"error": str(out)}
+                else:
+                    results[name] = out
+
+        return {"action_results": results}
+    return action_node
+
+
+# ── Routing edges ──────────────────────────────────────────────────────────
+
+def _should_search(state: AgentState) -> str:
+    """After routing: go to rewrite (RAG) or actions or end.
+
+    When both RAG and actions are needed (e.g. 'summarize my papers into a note'),
+    RAG runs first so that chunks are available for action handlers.
+    """
+    routing = state.get("routing") or {}
+    has_rag = routing.get("graph_rag", False)
+    has_actions = any(routing.get(k) for k in ("get_meetings", "create_event", "create_task", "create_note", "edit_note"))
+
+    if has_rag:
+        return "rewrite"   # RAG first; _after_synthesize will chain to actions if needed
+    if has_actions:
+        return "actions"
+    return "direct_answer"
+
+
+def _after_synthesize(state: AgentState) -> str:
+    """After RAG synthesis: chain to actions if the route also requires them."""
+    routing = state.get("routing") or {}
+    has_actions = any(
+        routing.get(k)
+        for k in ("get_meetings", "create_event", "create_task", "create_note", "edit_note")
+    )
+    if has_actions:
+        return "actions"
+    return "done"
+
+
+def _check_confidence(state: AgentState) -> str:
+    """After rerank: enough evidence or retry?
+
+    Dynamic iteration strategy:
+    - Stop early if confidence is high enough
+    - Stop if confidence stopped improving (plateau)
+    - Allow up to max_iters (default 6) for tough queries
+    """
+    confidence = state.get("confidence", 0)
+    top = state.get("top_chunks") or []
+    iteration = state.get("iteration", 1)
+    max_iters = state.get("max_iters", 6)
+    threshold = state.get("conf_threshold", 0.30)
+
+    # Strong evidence — stop immediately
+    if len(top) >= 5 and confidence >= 0.50:
+        return "sufficient"
+
+    # Decent evidence — stop if we have 3+ chunks
+    if len(top) >= 3 and confidence >= threshold:
+        return "sufficient"
+
+    # No chunks at all after 2 iterations — likely no documents uploaded
+    if iteration >= 2 and len(top) == 0:
+        return "sufficient"
+
+    # Hit max iterations — answer with what we have
+    if iteration >= max_iters:
+        return "sufficient"
+
+    return "retry"
+
+
+# ── Retry node: bump iteration, pick next query variant ────────────────────
+
+def _build_retry_node():
+    @traceable(name="retry_query")
+    async def retry_node(state: AgentState) -> dict:
+        goal = state["goal"]
+        iteration = state.get("iteration", 1) + 1
+
+        if iteration == 2:
+            query = goal  # original, unmodified
+        elif iteration == 3:
+            query = " ".join(
+                w for w in re.findall(r"[A-Za-z][a-z]{2,}", goal)
+                if w.lower() not in {"what", "which", "where", "when", "that", "this",
+                                      "from", "with", "about", "does", "have", "been",
+                                      "their", "there", "these", "those", "between"}
+            ) or goal
+        elif iteration == 4:
+            # Quoted key phrases — wrap multi-word terms for fulltext
+            words = [w for w in re.findall(r"\w+", goal) if len(w) > 3]
+            query = " ".join(words[:8]) if words else goal
+        elif iteration == 5:
+            # Broader: just nouns/verbs, fewer words
+            query = " ".join(w for w in re.findall(r"[A-Z][a-z]+", goal))[:120] or goal
+        else:
+            query = " ".join(w for w in re.findall(r"\w+", goal) if len(w) > 3) or goal
+
+        return {"iteration": iteration, "query": query}
+    return retry_node
+
+
+def _build_direct_answer_node(registry: ToolRegistry):
+    _DIRECT_PROMPT = (
+        "You are IntelliDoc, a friendly document-management assistant. "
+        "The user sent a conversational message (greeting, small-talk, or a "
+        "question that doesn't need any documents). Respond naturally and "
+        "helpfully. Keep it concise — one or two sentences is fine. "
+        "Do NOT say you cannot find documents; this is just a chat."
+    )
+
+    @traceable(name="direct_answer")
+    async def direct_answer_node(state: AgentState) -> dict:
+        llm = registry.get("llm_summarize")
+        if not llm:
+            return {"answer": "Hey there! How can I help you today?", "status": "direct"}
+        resp = await llm.run(question=state["goal"], prompt=_DIRECT_PROMPT, chunks=[])
+        return {"answer": resp.get("answer", ""), "status": "direct"}
+    return direct_answer_node
+
+
+def _build_action_synthesize_node(registry: ToolRegistry):
+    """Synthesize a human-friendly answer from action results + optional RAG."""
+    @traceable(name="action_synthesize")
+    async def action_synthesize_node(state: AgentState) -> dict:
+        results = state.get("action_results") or {}
+        goal = state["goal"]
+        parts: List[str] = []
+
+        # If RAG ran before actions, include the document answer
+        rag_answer = state.get("answer") or ""
+        if rag_answer and state.get("routing", {}).get("graph_rag"):
+            parts.append(f"**Document Summary:**\n{rag_answer}")
+
+        for key, data in results.items():
+            if isinstance(data, dict) and data.get("error"):
+                parts.append(f"**{key}** failed: {data['error']}")
+            elif isinstance(data, dict) and data.get("ok"):
+                item = data.get("event") or data.get("task") or data.get("note") or data
+                parts.append(f"**{key}** ✓: {json.dumps(item, default=str)[:300]}")
+            elif isinstance(data, list):
+                parts.append(f"**{key}**: {len(data)} result(s)")
+            elif isinstance(data, dict):
+                parts.append(f"**{key}**: {json.dumps(data, default=str)[:300]}")
+
+        if not parts:
+            return {"answer": "No actions were executed.", "status": "empty"}
+
+        # Use LLM to write a nice summary
+        llm = registry.get("llm_summarize")
+        if llm:
+            prompt = (
+                "Summarize these action results into a user-friendly message. "
+                "Be concise and use markdown formatting. "
+                "If a document summary is included, present it clearly first, "
+                "then mention the other completed actions.\n\n"
+                f"User request: {goal}\n\n"
+                f"Results:\n" + "\n".join(parts)
+            )
+            resp = await llm.run(question=goal, prompt=prompt, chunks=[])
+            return {"answer": resp.get("answer", "\n".join(parts)), "status": "action_complete"}
+
+        return {"answer": "\n".join(parts), "status": "action_complete"}
+    return action_synthesize_node
+
+
+# ── Build the graph ────────────────────────────────────────────────────────
+
+def build_agent_graph(registry: ToolRegistry) -> Any:
+    """Construct the compiled LangGraph state machine.
+
+    Returns a compiled graph that accepts AgentState and returns AgentState.
+    """
+    graph = StateGraph(AgentState)
+
+    # Add nodes
+    graph.add_node("route", _build_route_node(registry))
+    graph.add_node("rewrite", _build_rewrite_node(registry))
+    graph.add_node("search", _build_search_node(registry))
+    graph.add_node("rerank", _build_rerank_node())
+    graph.add_node("retry", _build_retry_node())
+    graph.add_node("synthesize", _build_synthesize_node(registry))
+    graph.add_node("actions", _build_action_node(registry))
+    graph.add_node("action_synthesize", _build_action_synthesize_node(registry))
+    graph.add_node("direct_answer", _build_direct_answer_node(registry))
+
+    # Set entry point
+    graph.set_entry_point("route")
+
+    # Edges from route
+    graph.add_conditional_edges("route", _should_search, {
+        "rewrite": "rewrite",
+        "actions": "actions",
+        "direct_answer": "direct_answer",
+    })
+
+    # RAG loop: rewrite → search → rerank → check → [synthesize | retry → search]
+    graph.add_edge("rewrite", "search")
+    graph.add_edge("search", "rerank")
+    graph.add_conditional_edges("rerank", _check_confidence, {
+        "sufficient": "synthesize",
+        "retry": "retry",
+    })
+    graph.add_edge("retry", "search")
+
+    # After RAG synthesis: chain to actions if multi-intent, otherwise end
+    graph.add_conditional_edges("synthesize", _after_synthesize, {
+        "actions": "actions",
+        "done": END,
+    })
+
+    # Terminals
+    graph.add_edge("actions", "action_synthesize")
+    graph.add_edge("action_synthesize", END)
+    graph.add_edge("direct_answer", END)
+
+    return graph.compile()
+
+
+# ── Public API ─────────────────────────────────────────────────────────────
+
+_compiled_graph: Any = None
+
+
+def get_agent_graph(registry: ToolRegistry) -> Any:
+    """Return (or build) the singleton compiled graph."""
+    global _compiled_graph
+    if _compiled_graph is None:
+        _compiled_graph = build_agent_graph(registry)
+    return _compiled_graph
+
+
+async def run_agent_graph(
+    registry: ToolRegistry,
+    goal: str,
+    user_email: str = "",
+    session_id: str = "",
+    max_iters: int = 6,
+    min_hits: int = 6,
+) -> Dict[str, Any]:
+    """Run the full agent pipeline and return the result dict.
+
+    This is the main entry point that replaces BrainAgent.run().
+    """
+    graph = get_agent_graph(registry)
+
+    # Load chat history for context
+    history = get_history(session_id, user_email=user_email) if session_id else []
+
+    # Save user message to memory
+    if session_id:
+        append_message(session_id, "user", goal, user_email=user_email)
+
+    initial_state: AgentState = {
+        "goal": goal,
+        "user_email": user_email,
+        "session_id": session_id,
+        "routing": {},
+        "query": "",
+        "rewritten_query": "",
+        "sub_queries": [],
+        "collected": [],
+        "top_chunks": [],
+        "confidence": 0.0,
+        "iteration": 0,
+        "max_iters": max_iters,
+        "min_hits": min_hits,
+        "conf_threshold": float(os.getenv("CONFIDENCE_SUMMARIZE", "0.30")),
+        "action_results": {},
+        "answer": "",
+        "sources": [],
+        "evidence_score": 0.0,
+        "status": "",
+        "scratchpad": [],
+        "errors": [],
+        "search_failed": False,
+        "history": history,
+    }
+
+    result = await graph.ainvoke(initial_state)
+
+    return {
+        "goal": goal,
+        "answer": result.get("answer", ""),
+        "sources": result.get("sources", []),
+        "chunks": result.get("top_chunks", []),
+        "confidence": result.get("confidence", 0),
+        "evidence_score": result.get("evidence_score", 0),
+        "status": result.get("status", ""),
+        "scratchpad": result.get("scratchpad", []),
+        "action_results": result.get("action_results", {}),
+    }
+
+
+async def stream_agent_graph(
+    registry: ToolRegistry,
+    goal: str,
+    user_email: str = "",
+    session_id: str = "",
+    max_iters: int = 6,
+    min_hits: int = 6,
+):
+    """Async generator that yields SSE-ready dicts as the pipeline runs.
+
+    Yields:
+      {"type": "status", "node": "<node_name>", "detail": "..."}
+      {"type": "token",  "token": "<text>"}
+      {"type": "sources", "sources": [...]}
+      {"type": "done",   ...full result...}
+      {"type": "error",  "detail": "..."}
+
+    Uses ``graph.astream()`` to get real per-node progress, then streams
+    the synthesis LLM call token-by-token for real-time rendering.
+    """
+    graph = get_agent_graph(registry)
+
+    history = get_history(session_id, user_email=user_email) if session_id else []
+    if session_id:
+        append_message(session_id, "user", goal, user_email=user_email)
+
+    initial_state: AgentState = {
+        "goal": goal,
+        "user_email": user_email,
+        "session_id": session_id,
+        "routing": {},
+        "query": "",
+        "rewritten_query": "",
+        "sub_queries": [],
+        "collected": [],
+        "top_chunks": [],
+        "confidence": 0.0,
+        "iteration": 0,
+        "max_iters": max_iters,
+        "min_hits": min_hits,
+        "conf_threshold": float(os.getenv("CONFIDENCE_SUMMARIZE", "0.30")),
+        "action_results": {},
+        "answer": "",
+        "sources": [],
+        "evidence_score": 0.0,
+        "status": "",
+        "scratchpad": [],
+        "errors": [],
+        "search_failed": False,
+        "history": history,
+    }
+
+    _NODE_LABELS = {
+        "route": "Routing your question...",
+        "rewrite": "Optimizing search query...",
+        "search": "Searching documents...",
+        "rerank": "Ranking results...",
+        "retry": "Refining search...",
+        "synthesize": "Generating answer...",
+        "actions": "Executing actions...",
+        "action_synthesize": "Summarizing results...",
+        "direct_answer": "Responding...",
+    }
+
+    final_state: Dict[str, Any] = {}
+
+    # Stream per-node progress using LangGraph's astream
+    async for event in graph.astream(initial_state):
+        for node_name, node_output in event.items():
+            yield {"type": "status", "node": node_name, "detail": _NODE_LABELS.get(node_name, node_name)}
+            # Accumulate state
+            final_state.update(node_output)
+
+    answer = final_state.get("answer", "")
+    sources = final_state.get("sources", [])
+    status = final_state.get("status", "")
+
+    # If the answer came from the normal pipeline, try to re-stream it
+    # via the LLM for real token-by-token delivery.
+    # For action/direct answers, just send the pre-computed text.
+    if status in ("grounded", "insufficient") and answer:
+        # We already have the answer from the non-streaming synthesis.
+        # Stream it token-by-token (real tokens, not fake chunks).
+        llm = registry.get("llm_summarize")
+        chunks = final_state.get("top_chunks") or []
+        if llm and hasattr(llm, "stream_run") and chunks:
+            yield {"type": "status", "node": "stream", "detail": "Streaming answer..."}
+            streamed_answer = ""
+            async for token in llm.stream_run(
+                question=goal, prompt=summarize_prompt, chunks=chunks
+            ):
+                streamed_answer += token
+                yield {"type": "token", "token": token}
+            # Use streamed answer as the final one
+            answer = streamed_answer
+        else:
+            # Fallback: send the pre-computed answer as tokens
+            for i in range(0, len(answer), 4):
+                yield {"type": "token", "token": answer[i:i + 4]}
+    elif answer:
+        # Direct/action answers — send as-is
+        for i in range(0, len(answer), 4):
+            yield {"type": "token", "token": answer[i:i + 4]}
+
+    if sources:
+        yield {"type": "sources", "sources": sources}
+
+    # Save assistant message to memory
+    if session_id:
+        append_message(session_id, "assistant", answer, user_email=user_email)
+
+    yield {
+        "type": "done",
+        "goal": goal,
+        "answer": answer,
+        "sources": sources,
+        "confidence": final_state.get("confidence", 0),
+        "evidence_score": final_state.get("evidence_score", 0),
+        "status": status,
+        "scratchpad": final_state.get("scratchpad", []),
+        "action_results": final_state.get("action_results", {}),
+    }

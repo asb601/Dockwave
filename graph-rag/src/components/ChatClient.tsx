@@ -230,12 +230,15 @@ function MessageList({
   sending: boolean;
   endRef: React.RefObject<HTMLDivElement | null>;
 }) {
+  const lastMsg = messages[messages.length - 1];
+  const showTyping = sending && !(lastMsg?.role === "assistant" && lastMsg.content);
+
   return (
     <div className="mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-3xl space-y-4 sm:space-y-5">
       {messages.map((m, idx) => (
         <MessageBubble key={idx} message={m} />
       ))}
-      {sending && <TypingIndicator />}
+      {showTyping && <TypingIndicator />}
       <div ref={endRef} />
     </div>
   );
@@ -399,6 +402,14 @@ export default function ChatClient() {
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
 
+  // Use a ref so refreshSessions always reads the latest value
+  // without needing activeSessionId in useCallback deps.
+  const activeSessionIdRef = useRef(activeSessionId);
+  activeSessionIdRef.current = activeSessionId;
+
+  const sendingRef = useRef(sending);
+  sendingRef.current = sending;
+
   const refreshSessions = useCallback(async (preferredSessionId?: string | null) => {
     const res = await fetch("/api/chat", { cache: "no-store" });
     if (!res.ok) {
@@ -409,7 +420,10 @@ export default function ChatClient() {
     const nextSessions = data.sessions ?? [];
     setSessions(nextSessions);
 
-    const targetId = preferredSessionId === undefined ? activeSessionId : preferredSessionId;
+    // Don't overwrite messages while a stream is in progress
+    if (sendingRef.current) return;
+
+    const targetId = preferredSessionId === undefined ? activeSessionIdRef.current : preferredSessionId;
     if (targetId) {
       const active = nextSessions.find((session) => session.id === targetId);
       if (active) {
@@ -427,9 +441,9 @@ export default function ChatClient() {
 
     setActiveSessionId(null);
     setMessages([]);
-  }, [activeSessionId]);
+  }, []);  // stable — no deps that change
 
-  // Load sessions from the database on mount
+  // Load sessions from the database on mount only
   useEffect(() => {
     void refreshSessions();
   }, [refreshSessions]);
@@ -468,35 +482,105 @@ export default function ChatClient() {
     const sessionId = activeSessionId;
     setMessages((m) => [...m, userMsg]);
     setSending(true);
+
+    // Add a placeholder assistant message that we'll stream into
+    const placeholderMsg: Message = {
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+    };
+    setMessages((m) => [...m, placeholderMsg]);
+
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, message: trimmed }),
       });
-      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error(data?.error ?? "Request failed");
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? `Request failed (${res.status})`);
       }
-      const assistant: Message = {
-        role: "assistant",
-        content: data?.message?.content ?? "(no response)",
-        timestamp: data?.message?.timestamp ? new Date(data.message.timestamp) : new Date(),
-        sources: (data?.sources ?? []) as Source[],
-      };
-      const nextSessionId = (data?.sessionId as string | undefined) ?? sessionId ?? null;
-      setActiveSessionId(nextSessionId);
-      setMessages((m) => [...m, assistant]);
-      await refreshSessions(nextSessionId);
+
+      const newSessionId = res.headers.get("X-Session-Id") ?? sessionId ?? null;
+      setActiveSessionId(newSessionId);
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const decoder = new TextDecoder();
+      let fullAnswer = "";
+      let streamSources: Source[] = [];
+      let sseBuffer = ""; // Buffer for incomplete SSE lines across TCP chunks
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split("\n");
+        // Keep the last element — it may be an incomplete line
+        sseBuffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.token) {
+              fullAnswer += data.token;
+              // Update the last message with progressive content
+              setMessages((m) => {
+                const copy = [...m];
+                const last = copy[copy.length - 1];
+                if (last?.role === "assistant") {
+                  copy[copy.length - 1] = { ...last, content: fullAnswer };
+                }
+                return copy;
+              });
+            }
+            if (data.sources) {
+              streamSources = data.sources as Source[];
+            }
+          } catch {
+            // non-JSON line, skip
+          }
+        }
+      }
+
+      // Final update with sources
+      setMessages((m) => {
+        const copy = [...m];
+        const last = copy[copy.length - 1];
+        if (last?.role === "assistant") {
+          copy[copy.length - 1] = {
+            ...last,
+            content: fullAnswer || "(no response)",
+            sources: streamSources.length > 0 ? streamSources : undefined,
+          };
+        }
+        return copy;
+      });
+
+      await refreshSessions(newSessionId);
     } catch {
-      setMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          content: "Sorry, something went wrong. Please try again.",
-          timestamp: new Date(),
-        },
-      ]);
+      setMessages((m) => {
+        const copy = [...m];
+        const last = copy[copy.length - 1];
+        if (last?.role === "assistant" && !last.content) {
+          copy[copy.length - 1] = {
+            ...last,
+            content: "Sorry, something went wrong. Please try again.",
+          };
+        } else {
+          copy.push({
+            role: "assistant",
+            content: "Sorry, something went wrong. Please try again.",
+            timestamp: new Date(),
+          });
+        }
+        return copy;
+      });
     } finally {
       setSending(false);
     }

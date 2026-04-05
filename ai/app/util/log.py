@@ -36,11 +36,15 @@ def _make_jsonl_logger(logger_name: str, file_path: str) -> logging.Logger:
     return evlogger
 
 
-_EVENTS_PATH = os.getenv("LOG_JSONL_PATH", "ai/logs/events.jsonl")
+_EVENTS_PATH = os.getenv("LOG_JSONL_PATH", str(Path(__file__).parent.parent.parent / "logs" / "events.jsonl"))
 _BRAIN_PATH = str(Path(__file__).parent.parent.parent / "logs" / "brain_event.jsonl")
+_LLM_COST_PATH = str(Path(__file__).parent.parent.parent / "logs" / "llm_costs.jsonl")
 
 _event_logger = _make_jsonl_logger("intellidoc.sink.events", _EVENTS_PATH)
 _brain_logger = _make_jsonl_logger("intellidoc.sink.brain", _BRAIN_PATH)
+_cost_logger = _make_jsonl_logger("intellidoc.sink.llm_costs", _LLM_COST_PATH)
+
+_app_logger = logging.getLogger("intellidoc.costs")
 
 
 # ---------------------------------------------------------------------------
@@ -65,28 +69,75 @@ def log_brain_event(event_type: str, data: Dict[str, Any]) -> None:
         pass
 
 
-def cost_config() -> Dict[str, float]:
-    def _f(name: str, default: float) -> float:
-        try:
-            return float(os.getenv(name, str(default)))
-        except Exception:
-            return default
+def log_llm_cost(
+    caller: str,
+    provider: str,
+    model: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+    **extra: Any,
+) -> float:
+    """Log an LLM call with cost to llm_costs.jsonl and return the cost.
 
-    return {
-        "in_per_1k": _f(
-            "GROQ_INPUT_COST_PER_1K",
-            _f("AZURE_OPENAI_INPUT_COST_PER_1K", _f("OPENAI_INPUT_COST_PER_1K", 0.0)),
-        ),
-        "out_per_1k": _f(
-            "GROQ_OUTPUT_COST_PER_1K",
-            _f("AZURE_OPENAI_OUTPUT_COST_PER_1K", _f("OPENAI_OUTPUT_COST_PER_1K", 0.0)),
-        ),
+    Args:
+        caller: Which part of the system made this call (e.g. "brain", "entity_extraction", "router", "summarize", "stream").
+        provider: LLM provider name (e.g. "azure_openai", "groq").
+        model: Model/deployment name (e.g. "gpt-4o-mini").
+        prompt_tokens: Input tokens used.
+        completion_tokens: Output tokens generated.
+        **extra: Any additional fields to include in the log entry.
+
+    Returns:
+        Estimated cost in USD.
+    """
+    cost = estimate_cost(prompt_tokens, completion_tokens, model=model)
+    total_tokens = prompt_tokens + completion_tokens
+    entry = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "caller": caller,
+        "provider": provider,
+        "model": model,
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total_tokens,
+        "cost_usd": cost,
+        **extra,
     }
+    try:
+        _cost_logger.info(json.dumps(entry, ensure_ascii=False))
+    except Exception:
+        pass
+    _app_logger.info(
+        "LLM cost | %-22s | %-14s | %-26s | in=%-6d out=%-6d | $%.6f",
+        caller, provider, model, prompt_tokens, completion_tokens, cost,
+    )
+    return cost
 
 
-def estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
-    cfg = cost_config()
+# Per-1K-token pricing by provider and model (USD).
+# Override via env vars like AZURE_OPENAI_GPT4O_MINI_INPUT_COST_PER_1K.
+_PRICING: Dict[str, Dict[str, float]] = {
+    # Azure OpenAI
+    "gpt-4o-mini":       {"in": 0.000150, "out": 0.000600},
+    "gpt-4o":            {"in": 0.00250,  "out": 0.01000},
+    "gpt-4":             {"in": 0.03000,  "out": 0.06000},
+    # Groq
+    "llama-3.3-70b-versatile": {"in": 0.00059, "out": 0.00079},
+    "llama-3.1-8b-instant":    {"in": 0.00005, "out": 0.00008},
+    # OpenAI direct
+    "gpt-3.5-turbo":    {"in": 0.00050,  "out": 0.00150},
+}
+_DEFAULT_PRICING = {"in": 0.000150, "out": 0.000600}  # gpt-4o-mini fallback
+
+
+def estimate_cost(
+    prompt_tokens: int,
+    completion_tokens: int,
+    model: str = "",
+) -> float:
+    """Estimate USD cost based on token counts and model name."""
+    rates = _PRICING.get(model, _DEFAULT_PRICING)
     return (
-        (prompt_tokens / 1000.0) * cfg["in_per_1k"]
-        + (completion_tokens / 1000.0) * cfg["out_per_1k"]
+        (prompt_tokens / 1000.0) * rates["in"]
+        + (completion_tokens / 1000.0) * rates["out"]
     )

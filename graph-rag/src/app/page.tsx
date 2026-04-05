@@ -77,13 +77,13 @@ export default async function LandingPage() {
 
         <div className="relative mx-auto max-w-4xl text-center">
           {/* Pill badge */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary/60 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider backdrop-blur sm:text-sm">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary/60 px-4 py-1.5 font-mono text-xs font-semibold uppercase tracking-wider backdrop-blur sm:text-sm">
             <Sparkles className="w-3.5 h-3.5" />
             Powered by Graph RAG
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl font-extrabold leading-[1.08] sm:text-6xl md:text-7xl lg:text-8xl">
+          <h1 className="font-display text-4xl font-extrabold leading-[1.08] sm:text-6xl md:text-7xl lg:text-8xl">
             Your documents,{" "}
             <span className="relative">
               <span className="bg-gradient-to-r from-foreground via-muted-foreground to-foreground bg-clip-text text-transparent">
@@ -143,7 +143,7 @@ export default async function LandingPage() {
       <section id="features" className="scroll-mt-16 px-4 py-20 sm:px-6 sm:py-28">
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto mb-14 max-w-2xl text-center">
-            <h2 className="text-3xl font-extrabold sm:text-4xl md:text-5xl">
+            <h2 className="font-display text-3xl font-extrabold sm:text-4xl md:text-5xl">
               Everything you need.
               <br className="hidden sm:block" />{" "}
               Nothing you don&rsquo;t.
@@ -163,7 +163,7 @@ export default async function LandingPage() {
                 <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-secondary text-foreground">
                   {item.icon}
                 </div>
-                <h3 className="text-lg font-bold">{item.title}</h3>
+                <h3 className="font-display text-lg font-bold">{item.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {item.description}
                 </p>
@@ -176,7 +176,7 @@ export default async function LandingPage() {
       {/* ── How it works ─────────────────────────────────────────────── */}
       <section className="border-y border-border bg-secondary/20 px-4 py-20 sm:px-6 sm:py-28">
         <div className="mx-auto max-w-4xl">
-          <h2 className="mb-14 text-center text-3xl font-extrabold sm:text-4xl md:text-5xl">
+          <h2 className="font-display mb-14 text-center text-3xl font-extrabold sm:text-4xl md:text-5xl">
             Three steps. That&rsquo;s it.
           </h2>
 
@@ -202,7 +202,7 @@ export default async function LandingPage() {
                 <span className="font-mono text-xs font-bold text-muted-foreground">
                   {step}
                 </span>
-                <h3 className="mt-2 text-2xl font-extrabold sm:text-3xl">
+                <h3 className="font-display mt-2 text-2xl font-extrabold sm:text-3xl">
                   {heading}
                 </h3>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -218,7 +218,7 @@ export default async function LandingPage() {
       <section className="px-4 py-20 sm:px-6 sm:py-28">
         <div className="mx-auto max-w-3xl text-center">
           <div className="rounded-3xl border border-border bg-card p-8 sm:p-14">
-            <h2 className="text-3xl font-extrabold sm:text-4xl md:text-5xl">
+            <h2 className="font-display text-3xl font-extrabold sm:text-4xl md:text-5xl">
               Ready to work smarter?
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
@@ -257,11 +257,6 @@ export default async function LandingPage() {
               </Link>
             ))}
           </div>
-        </div>
-
-        <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} Docwave. Built with &hearts; and
-          a lot of coffee.
         </div>
       </footer>
     </div>

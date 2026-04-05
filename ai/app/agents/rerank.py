@@ -1,6 +1,13 @@
 from __future__ import annotations
 
+import logging
+import os
 from typing import Any, Dict, List, Tuple
+
+import httpx
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+logger = logging.getLogger("intellidoc.rerank")
 
 
 def naive_rerank(chunks: List[Dict[str, Any]], query: str, top_k: int = 12) -> List[Dict[str, Any]]:
@@ -66,4 +73,61 @@ def hybrid_rerank(items: List[Dict[str, Any]], query: str, top_k: int = 15, k: i
 
     fused.sort(key=lambda x: x[0], reverse=True)
     reranked = [item for _, item in fused[:top_k]]
+    return reranked
+
+
+async def cohere_rerank(
+    chunks: List[Dict[str, Any]],
+    query: str,
+    top_k: int = 15,
+) -> List[Dict[str, Any]]:
+    """Semantic reranking via the Cohere Rerank v3 API.
+
+    Sends *query* + each chunk's text to the Cohere reranker, which reads
+    every chunk and scores how well it answers the question.  Falls back
+    to the input order if the API key is missing or the call fails.
+    """
+    api_key = os.getenv("COHERE_API_KEY") or os.getenv("embeedings_api", "")
+    model = os.getenv("COHERE_RERANK_MODEL", "rerank-v3.5")
+    if not api_key or not chunks:
+        return chunks[:top_k]
+
+    documents = [(c.get("text") or "")[:4000] for c in chunks]
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.TimeoutException)),
+        reraise=True,
+    )
+    async def _call_cohere():
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                "https://api.cohere.com/v2/rerank",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": model,
+                    "query": query,
+                    "documents": documents,
+                    "top_n": top_k,
+                },
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    try:
+        data = await _call_cohere()
+    except Exception as exc:
+        logger.warning("Cohere rerank failed, returning hybrid order: %s", exc)
+        return chunks[:top_k]
+
+    results = data.get("results", [])
+    reranked: List[Dict[str, Any]] = []
+    for item in results:
+        idx = item.get("index", 0)
+        if 0 <= idx < len(chunks):
+            entry = dict(chunks[idx])
+            entry["rerank_score"] = float(item.get("relevance_score", 0))
+            reranked.append(entry)
+
     return reranked

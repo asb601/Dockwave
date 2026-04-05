@@ -24,9 +24,30 @@ services:
       - neo4j_logs:/logs
       - neo4j_import:/var/lib/neo4j/import
       - neo4j_plugins:/plugins
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p $${NEO4J_PASSWORD:-neo4j} 'RETURN 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: graph-rag-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
   neo4j_data:
   neo4j_logs:
   neo4j_import:
   neo4j_plugins:
+  redis_data:

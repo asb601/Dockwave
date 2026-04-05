@@ -8,13 +8,7 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-function verifyServiceToken(req: Request): boolean {
-  const token = req.headers.get("x-service-token");
-  const expected = process.env.SERVICE_TOKEN;
-  if (!expected || !token) return false;
-  return token === expected;
-}
+import { verifyServiceToken } from "@/lib/verifyServiceToken";
 
 type Body = {
   user_email: string;

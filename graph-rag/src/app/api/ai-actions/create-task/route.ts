@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { Priority } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { verifyServiceToken } from "@/lib/verifyServiceToken";
 
 type Body = {
   user_email: string;
@@ -19,13 +20,6 @@ type Body = {
   due_time?: string;
   priority?: string;
 };
-
-function verifyServiceToken(req: Request): boolean {
-  const token = req.headers.get("x-service-token");
-  const expected = process.env.SERVICE_TOKEN;
-  if (!expected || !token) return false;
-  return token === expected;
-}
 
 export async function POST(req: Request) {
   if (!verifyServiceToken(req)) {

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 
 type ChatSource = {
   file: string;
@@ -108,6 +109,20 @@ export async function POST(req: Request) {
     const auth = await requireUser(true);
     if ("error" in auth) return auth.error;
 
+    // Rate limit: 20 messages per minute per user
+    const rl = rateLimit(`chat:${auth.userId}`, 20, 60_000);
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many messages. Please wait a moment." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)),
+          },
+        }
+      );
+    }
+
     const body = (await req.json()) as { sessionId?: string | null; message?: string };
     const content = body.message?.trim() ?? "";
 
@@ -161,6 +176,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         goal: content,
         user_email: auth.userEmail || auth.userId,
+        session_id: session.id,
         max_iters: 4,
         min_hits: 6,
       }),

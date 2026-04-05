@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    name: Lint & Test (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip install -r pyproject.toml
+          uv pip install pytest pytest-asyncio ruff mypy
+
+      - name: Ruff lint
+        run: uv run ruff check app/ tests/
+
+      - name: Ruff format check
+        run: uv run ruff format --check app/ tests/
+
+      - name: Mypy type check
+        run: uv run mypy app/ --ignore-missing-imports --no-error-summary || true
+
+      - name: Run tests
+        env:
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USERNAME: neo4j
+          NEO4J_PASSWORD: test
+          COHERE_API_KEY: test-key
+        run: uv run pytest tests/ -v --tb=short
+
+  frontend-lint:
+    name: Lint (Frontend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: graph-rag
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: graph-rag/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npx eslint . --max-warnings 0 || true
+
+      - name: TypeScript check
+        run: npx tsc --noEmit || true

@@ -87,7 +87,7 @@ class GraphClient:
         with self._session() as session:
             session.run(cypher, params)
 
-    def upsert_file_chunks(self, file_id: str, chunks: list[dict], batch_size: int = 200) -> int:
+    def upsert_file_chunks(self, file_id: str, chunks: list[dict], *, user_email: str = "", batch_size: int = 200) -> int:
         """Create/update Chunk nodes with embeddings and link them to the File.
         Batches writes to avoid message size limits.
         Each chunk dict: { id, index, text, charStart, charEnd, embedding }.
@@ -108,23 +108,23 @@ class GraphClient:
                         """,
                         {"dim": dim},
                     )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Vector index creation: %s", exc)
 
         cypher = """
         MATCH (fi:File {fileId: $fileId})
         WITH fi
         UNWIND $chunks AS ch
         MERGE (c:Chunk {chunkId: ch.id})
-          ON CREATE SET c.index = ch.index, c.text = ch.text, c.page = ch.page, c.charStart = ch.charStart, c.charEnd = ch.charEnd, c.embedding = ch.embedding, c.createdAt = timestamp()
-          ON MATCH SET c.text = ch.text, c.page = ch.page, c.charStart = ch.charStart, c.charEnd = ch.charEnd, c.embedding = ch.embedding, c.updatedAt = timestamp()
+          ON CREATE SET c.index = ch.index, c.text = ch.text, c.parentText = ch.parent_text, c.page = ch.page, c.charStart = ch.charStart, c.charEnd = ch.charEnd, c.embedding = ch.embedding, c.userEmail = $userEmail, c.createdAt = timestamp()
+          ON MATCH SET c.text = ch.text, c.parentText = ch.parent_text, c.page = ch.page, c.charStart = ch.charStart, c.charEnd = ch.charEnd, c.embedding = ch.embedding, c.userEmail = $userEmail, c.updatedAt = timestamp()
         MERGE (fi)-[:HAS_CHUNK]->(c)
         """
         total = 0
         with self._session() as session:
             for i in range(0, len(chunks), batch_size):
                 batch = chunks[i : i + batch_size]
-                session.run(cypher, {"fileId": file_id, "chunks": batch})
+                session.run(cypher, {"fileId": file_id, "chunks": batch, "userEmail": user_email})
                 total += len(batch)
         return total
 
@@ -169,8 +169,8 @@ class GraphClient:
                     "CREATE INDEX entity_name_type IF NOT EXISTS "
                     "FOR (e:Entity) ON (e.name, e.type)"
                 )
-            except Exception:
-                pass  # index may already exist
+            except Exception as exc:
+                logger.warning("Entity index creation: %s", exc)
 
     def upsert_chunk_entities(
         self, chunk_id: str, entities: list[dict]
@@ -208,108 +208,106 @@ class GraphClient:
         traversal (up to *max_hops* relationship hops).
 
         Returns chunks with their entity paths and relevance info.
+
+        Uses a single unified query that fetches both 1-hop (direct entity
+        matches) and 2-hop (cross-document via shared entities) results,
+        prioritising cross-file links for multi-document reasoning.
         """
         if not query_entities:
             return []
 
-        # Normalize query entities for matching
         normalized = [e.lower() for e in query_entities]
 
-        # Two-hop traversal: Entity <- MENTIONS - Chunk - HAS_CHUNK <- File
-        # Also follows Entity <- MENTIONS - OtherChunk paths for cross-doc linking
-        cypher = """
+        # Unified query: 1-hop direct + 2-hop cross-document in one pass.
+        # When user_email is provided, only return chunks belonging to that user.
+        user_filter_1hop = "WHERE f.userEmail = $userEmail" if user_email else ""
+        user_filter_2hop_f1 = "WHERE f1.userEmail = $userEmail" if user_email else ""
+        user_filter_2hop_f2 = "WHERE f2.userEmail = $userEmail" if user_email else ""
+
+        cypher = f"""
+        UNWIND $entityNames AS eName
+        MATCH (e:Entity)
+        WHERE e.normalizedName = eName OR e.normalizedName CONTAINS eName
+        WITH collect(DISTINCT e) AS seedEntities
+
+        // --- 1-hop: chunks directly mentioning a seed entity ---
+        UNWIND seedEntities AS se
+        MATCH (c:Chunk)-[:MENTIONS]->(se)
+        MATCH (f:File)-[:HAS_CHUNK]->(c)
+        {user_filter_1hop}
+        RETURN DISTINCT
+            f.name AS file,
+            c.text  AS text,
+            c.parentText AS parent_text,
+            c.page  AS page,
+            c.chunkId AS chunkId,
+            se.name AS matchedEntity,
+            se.type AS entityType,
+            1       AS hops,
+            1       AS entityCount
+
+        UNION
+
+        // --- 2-hop: cross-document via shared entities ---
         UNWIND $entityNames AS eName
         MATCH (e:Entity)
         WHERE e.normalizedName = eName OR e.normalizedName CONTAINS eName
         WITH collect(DISTINCT e) AS seedEntities
         UNWIND seedEntities AS se
-
-        // Direct chunks mentioning this entity
-        MATCH (c:Chunk)-[:MENTIONS]->(se)
-        MATCH (f:File)-[:HAS_CHUNK]->(c)
-        WITH se, c, f, 1 AS hops
-
+        MATCH (c1:Chunk)-[:MENTIONS]->(se)
+        MATCH (c1)-[:MENTIONS]->(bridge:Entity)
+        WHERE bridge <> se
+        MATCH (c2:Chunk)-[:MENTIONS]->(bridge)
+        WHERE c2 <> c1
+        MATCH (f2:File)-[:HAS_CHUNK]->(c2)
+        {user_filter_2hop_f2}
+        MATCH (f1:File)-[:HAS_CHUNK]->(c1)
+        {user_filter_2hop_f1}
+        WITH c2, f2, bridge,
+             CASE WHEN f2.name <> f1.name THEN 1 ELSE 0 END AS crossFile
+        WITH c2, f2, bridge,
+             count(DISTINCT crossFile) AS entityCount
         RETURN DISTINCT
-            f.name AS file,
-            c.text AS text,
-            c.page AS page,
-            c.chunkId AS chunkId,
-            se.name AS matchedEntity,
-            se.type AS entityType,
-            hops
-        ORDER BY hops ASC
+            f2.name     AS file,
+            c2.text     AS text,
+            c2.parentText AS parent_text,
+            c2.page     AS page,
+            c2.chunkId  AS chunkId,
+            bridge.name AS matchedEntity,
+            bridge.type AS entityType,
+            2           AS hops,
+            toInteger(entityCount) AS entityCount
+        ORDER BY entityCount DESC
         LIMIT $topK
         """
 
-        items = []
+        items: list[dict] = []
+        seen_ids: set[str] = set()
         with self._session() as session:
             rows = session.run(
                 cypher,
-                {"entityNames": normalized, "topK": top_k},
+                {"entityNames": normalized, "topK": top_k * 2, "userEmail": user_email or ""},
             )
-            for i, r in enumerate(rows):
+            for r in rows:
+                cid = r["chunkId"]
+                if cid in seen_ids:
+                    continue
+                seen_ids.add(cid)
                 items.append({
                     "file": r["file"],
-                    "text": r["text"],
+                    "text": r["parent_text"] or r["text"],
                     "page": r.get("page") or 0,
-                    "chunkId": r["chunkId"],
+                    "chunkId": cid,
                     "matchedEntity": r["matchedEntity"],
                     "entityType": r["entityType"],
                     "hops": r["hops"],
                     "source": "entity_graph",
-                    "initial_rank": i,
+                    "initial_rank": len(items),
                 })
+                if len(items) >= top_k:
+                    break
 
-        # Second pass: 2-hop (entity -> other chunks that share entities with those chunks)
-        if max_hops >= 2 and len(items) < top_k:
-            cypher_2hop = """
-            UNWIND $entityNames AS eName
-            MATCH (e:Entity)
-            WHERE e.normalizedName = eName OR e.normalizedName CONTAINS eName
-            WITH collect(DISTINCT e) AS seedEntities
-            UNWIND seedEntities AS se
-
-            // Find chunks mentioning seed entity, then find sibling entities, then find other chunks
-            MATCH (c1:Chunk)-[:MENTIONS]->(se)
-            MATCH (c1)-[:MENTIONS]->(e2:Entity)
-            WHERE e2 <> se
-            MATCH (c2:Chunk)-[:MENTIONS]->(e2)
-            WHERE c2 <> c1
-            MATCH (f:File)-[:HAS_CHUNK]->(c2)
-            WITH c2, f, e2, 2 AS hops, collect(DISTINCT se.name) AS via
-
-            RETURN DISTINCT
-                f.name AS file,
-                c2.text AS text,
-                c2.page AS page,
-                c2.chunkId AS chunkId,
-                e2.name AS matchedEntity,
-                e2.type AS entityType,
-                hops
-            ORDER BY hops ASC
-            LIMIT $topK
-            """
-            existing_ids = {it["chunkId"] for it in items}
-            with self._session() as session:
-                rows = session.run(
-                    cypher_2hop,
-                    {"entityNames": normalized, "topK": top_k - len(items)},
-                )
-                for r in rows:
-                    if r["chunkId"] not in existing_ids:
-                        items.append({
-                            "file": r["file"],
-                            "text": r["text"],
-                            "page": r.get("page") or 0,
-                            "chunkId": r["chunkId"],
-                            "matchedEntity": r["matchedEntity"],
-                            "entityType": r["entityType"],
-                            "hops": r["hops"],
-                            "source": "entity_graph",
-                            "initial_rank": len(items),
-                        })
-
-        return items[:top_k]
+        return items
 
     def get_user_knowledge_json(self, user_email: str):
         # Build simple shape:

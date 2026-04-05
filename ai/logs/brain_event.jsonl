@@ -90,3 +90,100 @@
 {"ts": "2026-03-22T20:56:33.362231+00:00", "type": "orchestration_plan", "goal": "I have a meeting with the CEO tomorrow about research papers and implementing AI for the company. Create detailed notes covering the agenda — discuss research papers, introduce GLISM and its benefits, and explore building a separate LLM for law. . in the existing note which is present , so please update it make it brief  proper points that summarizes what files i have research papaer and what are the important points for the enough overview to convince the ceo", "plan": {"graph_rag": true, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": true}, "user_email": "asb.bharath601@gmail.com"}
 {"ts": "2026-03-22T20:56:34.443606+00:00", "type": "iteration.start", "iter": 1, "query": "I have a meeting with the CEO tomorrow about research papers and implementing AI for the company. Create detailed notes covering the agenda — discuss research papers, introduce GLISM and its benefits,", "collected_so_far": 0}
 {"ts": "2026-03-22T20:56:38.029327+00:00", "type": "iteration.eval", "iter": 1, "query": "I have a meeting with the CEO tomorrow about research papers and implementing AI for the company. Create detailed notes covering the agenda — discuss research papers, introduce GLISM and its benefits,", "added": 40, "total": 40, "top": 20, "confidence": 0.3344, "top_files": ["1706.03762v7.pdf", "1706.03762v7.pdf", "2005.11401v4.pdf", "2005.11401v4.pdf", "2302.13971v1.pdf"], "top_scores": [0.3602, 0.3308, 0.328, 0.3273, 0.3257], "errors": []}
+{"ts": "2026-03-23T19:13:48.878944+00:00", "type": "orchestration_plan", "goal": "hi", "plan": {"graph_rag": false, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}}
+{"ts": "2026-03-23T19:17:44.621793+00:00", "type": "orchestration_plan", "goal": "hi", "plan": {"graph_rag": false, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}}
+{"ts": "2026-03-23T19:19:02.541887+00:00", "type": "orchestration_plan", "goal": "hi", "plan": {"graph_rag": false, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}}
+{"ts": "2026-03-23T19:19:12.422200+00:00", "type": "orchestration_plan", "goal": "hi", "plan": {"graph_rag": false, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}}
+{"ts": "2026-03-23T19:19:19.329617+00:00", "type": "orchestration_plan", "goal": "hi", "plan": {"graph_rag": false, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}}
+{"ts": "2026-03-23T19:19:23.706207+00:00", "type": "orchestration_plan", "goal": "hi", "plan": {"graph_rag": false, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}}
+{"ts": "2026-03-23T19:24:30.661888+00:00", "type": "orchestration_plan", "goal": "hi", "plan": {"graph_rag": false, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}}
+{"ts": "2026-03-23T19:28:47.333445+00:00", "type": "orchestration_plan", "goal": "hi", "plan": {"graph_rag": false, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}}
+{"ts": "2026-03-31T18:34:46.142319+00:00", "type": "orchestration_plan", "goal": "What activation function does LLaMA use instead of ReLU, and why?", "plan": {"graph_rag": true, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}}
+{"ts": "2026-03-31T18:34:53.529286+00:00", "type": "iteration.start", "iter": 1, "query": "LLaMA activation function alternative to ReLU", "collected_so_far": 40, "search_failed": false}
+{"ts": "2026-03-31T18:34:54.398267+00:00", "type": "iteration.eval", "iter": 1, "total": 40, "top": 20, "confidence": 0.3125}
+{"ts": "2026-03-31T18:58:16.249330+00:00", "type": "orchestration_plan", "goal": "What activation function does LLaMA use instead of ReLU, and why?", "plan": {"graph_rag": true, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}, "method": "keyword"}
+{"ts": "2026-03-31T18:58:16.933538+00:00", "type": "iteration.start", "iter": 1, "query": "activation function LLaMA use ReLU and", "collected_so_far": 55, "search_failed": false}
+{"ts": "2026-03-31T18:58:17.682065+00:00", "type": "iteration.eval", "iter": 1, "total": 55, "top": 20, "confidence": 0.3125}
+{"ts": "2026-04-01T13:46:43.988448+00:00", "type": "orchestration_plan", "goal": "What activation function does LLaMA use instead of ReLU, and why?", "plan": {"graph_rag": true, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}, "method": "keyword"}
+{"ts": "2026-04-01T13:46:44.586112+00:00", "type": "iteration.start", "iter": 1, "query": "activation function LLaMA use ReLU and", "collected_so_far": 0, "search_failed": true}
+{"ts": "2026-04-01T13:46:44.588266+00:00", "type": "iteration.eval", "iter": 1, "total": 0, "top": 0, "confidence": 0.0}
+{"ts": "2026-04-01T13:46:44.987046+00:00", "type": "iteration.start", "iter": 2, "query": "What activation function does LLaMA use instead of ReLU, and why?", "collected_so_far": 0, "search_failed": true}
+{"ts": "2026-04-01T13:46:44.987986+00:00", "type": "iteration.eval", "iter": 2, "total": 0, "top": 0, "confidence": 0.0}
+{"ts": "2026-04-01T13:47:33.705218+00:00", "type": "orchestration_plan", "goal": "What activation function does LLaMA use instead of ReLU, and why?", "plan": {"graph_rag": true, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}, "method": "keyword"}
+{"ts": "2026-04-01T13:47:34.178575+00:00", "type": "iteration.start", "iter": 1, "query": "activation function LLaMA use ReLU and", "collected_so_far": 55, "search_failed": false}
+{"ts": "2026-04-01T13:47:34.741595+00:00", "type": "iteration.eval", "iter": 1, "total": 55, "top": 20, "confidence": 0.3125}
+{"ts": "2026-04-01T13:49:19.666175+00:00", "type": "orchestration_plan", "goal": "Compare how RAG and LLaMA handle knowledge — what are the two types of memory RAG combines, and how does RAG's index hot-swapping experiment prove an advantage over parametric-only models like LLaMA?", "plan": {"graph_rag": true, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}, "method": "keyword"}
+{"ts": "2026-04-01T13:49:20.978790+00:00", "type": "iteration.start", "iter": 1, "query": "Compare RAG and LLaMA handle knowledge are the two types memory RAG combines and RAG", "collected_so_far": 55, "search_failed": false}
+{"ts": "2026-04-01T13:49:21.556690+00:00", "type": "iteration.eval", "iter": 1, "total": 55, "top": 20, "confidence": 0.5396}
+{"ts": "2026-04-03T15:35:08.751596+00:00", "type": "orchestration_plan", "goal": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give detialed sumamry into the notes ?", "plan": {"graph_rag": false, "get_meetings": true, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}, "method": "keyword"}
+{"ts": "2026-04-03T15:42:48.117494+00:00", "type": "orchestration_plan", "goal": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give detialed sumamry into the notes ?", "plan": {"graph_rag": false, "get_meetings": true, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}, "method": "keyword"}
+{"ts": "2026-04-03T16:48:21.270915+00:00", "type": "orchestration_plan", "goal": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "plan": {"graph_rag": true, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}, "method": "keyword"}
+{"ts": "2026-04-04T04:14:58.261327+00:00", "type": "orchestration_plan", "goal": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "plan": {"graph_rag": true, "get_meetings": false, "create_event": false, "create_task": false, "create_note": false, "edit_note": false}, "method": "keyword"}
+{"ts": "2026-04-04T04:41:16.621680+00:00", "type": "orchestration_plan", "goal": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "plan": {"graph_rag": true, "get_meetings": false, "create_event": false, "create_task": false, "create_note": true, "edit_note": false}, "method": "tool-calling"}
+{"ts": "2026-04-04T04:41:18.329328+00:00", "type": "iteration.start", "iter": 1, "query": "Hey fine summarize and files whats", "collected_so_far": 50, "search_failed": false}
+{"ts": "2026-04-04T04:41:19.224335+00:00", "type": "iteration.eval", "iter": 1, "total": 50, "top": 20, "confidence": 0.2127}
+{"ts": "2026-04-04T04:41:19.928866+00:00", "type": "iteration.start", "iter": 2, "query": "Hey so fine could u just summarize and tell me what files i have ? and whats it about ?", "collected_so_far": 90, "search_failed": false}
+{"ts": "2026-04-04T04:41:23.786140+00:00", "type": "iteration.eval", "iter": 2, "total": 90, "top": 20, "confidence": 0.2127}
+{"ts": "2026-04-04T04:41:24.506378+00:00", "type": "iteration.start", "iter": 3, "query": "Hey fine could just summarize and tell files and whats", "collected_so_far": 130, "search_failed": false}
+{"ts": "2026-04-04T04:41:25.238400+00:00", "type": "iteration.eval", "iter": 3, "total": 130, "top": 20, "confidence": 0.2127}
+{"ts": "2026-04-04T04:41:26.224976+00:00", "type": "iteration.start", "iter": 4, "query": "fine could just summarize tell what files have", "collected_so_far": 170, "search_failed": false}
+{"ts": "2026-04-04T04:41:26.951567+00:00", "type": "iteration.eval", "iter": 4, "total": 170, "top": 20, "confidence": 0.2127}
+{"ts": "2026-04-04T04:42:14.145142+00:00", "type": "orchestration_plan", "goal": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give detialed sumamry into the notes ?", "plan": {"graph_rag": true, "get_meetings": false, "create_event": false, "create_task": false, "create_note": true, "edit_note": true}, "method": "tool-calling"}
+{"ts": "2026-04-04T04:42:15.572693+00:00", "type": "iteration.start", "iter": 1, "query": "Its great you scheduled meeting but the notes look once again research papers and detialed sumamry", "collected_so_far": 50, "search_failed": false}
+{"ts": "2026-04-04T04:42:16.481225+00:00", "type": "iteration.eval", "iter": 1, "total": 50, "top": 20, "confidence": 0.1477}
+{"ts": "2026-04-04T04:42:18.067611+00:00", "type": "iteration.start", "iter": 2, "query": "Its great that you have scheduled meeting but the notes could u look at it once again ? the research papers and give detialed sumamry into the notes ?", "collected_so_far": 90, "search_failed": false}
+{"ts": "2026-04-04T04:42:19.732492+00:00", "type": "iteration.eval", "iter": 2, "total": 90, "top": 20, "confidence": 0.1477}
+{"ts": "2026-04-04T04:42:20.436494+00:00", "type": "iteration.start", "iter": 3, "query": "Its great you scheduled meeting but the notes could look once again the research papers and give detialed sumamry into the notes", "collected_so_far": 130, "search_failed": false}
+{"ts": "2026-04-04T04:42:23.069123+00:00", "type": "iteration.eval", "iter": 3, "total": 130, "top": 20, "confidence": 0.1477}
+{"ts": "2026-04-04T04:42:23.761681+00:00", "type": "iteration.start", "iter": 4, "query": "great that have scheduled meeting notes could look", "collected_so_far": 170, "search_failed": false}
+{"ts": "2026-04-04T04:42:24.431159+00:00", "type": "iteration.eval", "iter": 4, "total": 170, "top": 20, "confidence": 0.1477}
+{"ts": "2026-04-04T07:19:31.007375+00:00", "type": "agent.init", "goal": "hey", "history_len": 10}
+{"ts": "2026-04-04T07:19:32.915341+00:00", "type": "brain.final_answer", "step": 1, "answer_len": 34}
+{"ts": "2026-04-04T07:50:07.793207+00:00", "type": "agent.init", "goal": "hello, what can you do?", "history_len": 0}
+{"ts": "2026-04-04T07:50:10.334368+00:00", "type": "brain.final_answer", "step": 1, "answer_len": 575}
+{"ts": "2026-04-04T07:58:31.522371+00:00", "type": "agent.init", "goal": "Hey , so actually i have meeting with coe today at 5 pm ,which i have scheduled it and i need to explain that why we want an training for llm ,so i have uploaded few notes i feel lazy could u check th", "history_len": 10}
+{"ts": "2026-04-04T07:58:33.020299+00:00", "type": "brain.tool_calls", "step": 1, "tools": "search_documents"}
+{"ts": "2026-04-04T07:58:36.523123+00:00", "type": "search.complete", "query": "LLM training for law", "collected": 44, "top": 12}
+{"ts": "2026-04-04T07:58:40.276012+00:00", "type": "brain.tool_calls", "step": 2, "tools": "create_note"}
+{"ts": "2026-04-04T07:58:45.941445+00:00", "type": "brain.final_answer", "step": 3, "answer_len": 2406}
+{"ts": "2026-04-04T08:04:31.838467+00:00", "type": "agent.init", "goal": "Hey , so actually i have meeting with coe today at 5 pm ,which i have scheduled it and i need to explain that why we want an training for llm ,so i have uploaded few notes i feel lazy could u check th", "history_len": 10}
+{"ts": "2026-04-04T08:04:33.174973+00:00", "type": "brain.tool_calls", "step": 1, "tools": "search_documents"}
+{"ts": "2026-04-04T08:04:36.763704+00:00", "type": "search.complete", "query": "LLM training for law", "collected": 44, "top": 12}
+{"ts": "2026-04-04T08:04:41.068683+00:00", "type": "brain.tool_calls", "step": 2, "tools": "create_note"}
+{"ts": "2026-04-04T08:04:46.043699+00:00", "type": "brain.final_answer", "step": 3, "answer_len": 2290}
+{"ts": "2026-04-05T08:36:10.138418+00:00", "type": "agent.init", "goal": "What are the key findings in the uploaded document?", "history_len": 0}
+{"ts": "2026-04-05T08:36:10.139063+00:00", "type": "brain.tool_calls", "step": 1, "tools": "store_entities"}
+{"ts": "2026-04-05T08:36:10.140007+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 1060}
+{"ts": "2026-04-05T08:36:10.149015+00:00", "type": "agent.init", "goal": "What sample size was used?", "history_len": 0}
+{"ts": "2026-04-05T08:36:10.149952+00:00", "type": "brain.tool_calls", "step": 1, "tools": "store_entities"}
+{"ts": "2026-04-05T08:36:10.151171+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 119}
+{"ts": "2026-04-05T08:36:10.159501+00:00", "type": "agent.init", "goal": "Can you explain the methodology used in the research paper, including the statistical methods, the sample recruitment process, and any qualitative techniques that were employed alongside the quantitat", "history_len": 0}
+{"ts": "2026-04-05T08:36:10.160061+00:00", "type": "brain.tool_calls", "step": 1, "tools": "store_entities"}
+{"ts": "2026-04-05T08:36:10.161165+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 1060}
+{"ts": "2026-04-05T08:36:10.168929+00:00", "type": "agent.init", "goal": "How do the findings from the research methods paper compare with the literature review's meta-analysis?", "history_len": 0}
+{"ts": "2026-04-05T08:36:10.169487+00:00", "type": "brain.tool_calls", "step": 1, "tools": "store_entities"}
+{"ts": "2026-04-05T08:36:10.170555+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 272}
+{"ts": "2026-04-05T08:36:10.179115+00:00", "type": "agent.init", "goal": "What did Smith et al. 2019, Johnson 2020, and Chen 2021 find about engagement-outcome correlations?", "history_len": 0}
+{"ts": "2026-04-05T08:36:10.179688+00:00", "type": "brain.tool_calls", "step": 1, "tools": "store_entities"}
+{"ts": "2026-04-05T08:36:10.180710+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 232}
+{"ts": "2026-04-05T08:36:10.188131+00:00", "type": "agent.init", "goal": "Summarize all the key points from my uploaded research documents", "history_len": 0}
+{"ts": "2026-04-05T08:36:10.188636+00:00", "type": "brain.tool_calls", "step": 1, "tools": "store_entities"}
+{"ts": "2026-04-05T08:36:10.189638+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 1060}
+{"ts": "2026-04-05T08:36:54.586617+00:00", "type": "agent.init", "goal": "What are the key findings in the uploaded document?", "history_len": 0}
+{"ts": "2026-04-05T08:36:54.587226+00:00", "type": "brain.tool_calls", "step": 1, "tools": "search_documents"}
+{"ts": "2026-04-05T08:36:54.588560+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 1060}
+{"ts": "2026-04-05T08:36:54.597169+00:00", "type": "agent.init", "goal": "What sample size was used?", "history_len": 0}
+{"ts": "2026-04-05T08:36:54.599213+00:00", "type": "brain.tool_calls", "step": 1, "tools": "search_documents"}
+{"ts": "2026-04-05T08:36:54.600484+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 119}
+{"ts": "2026-04-05T08:36:54.608141+00:00", "type": "agent.init", "goal": "Can you explain the methodology used in the research paper, including the statistical methods, the sample recruitment process, and any qualitative techniques that were employed alongside the quantitat", "history_len": 0}
+{"ts": "2026-04-05T08:36:54.608701+00:00", "type": "brain.tool_calls", "step": 1, "tools": "search_documents"}
+{"ts": "2026-04-05T08:36:54.609901+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 1060}
+{"ts": "2026-04-05T08:36:54.617105+00:00", "type": "agent.init", "goal": "How do the findings from the research methods paper compare with the literature review's meta-analysis?", "history_len": 0}
+{"ts": "2026-04-05T08:36:54.617598+00:00", "type": "brain.tool_calls", "step": 1, "tools": "search_documents"}
+{"ts": "2026-04-05T08:36:54.618722+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 272}
+{"ts": "2026-04-05T08:36:54.626899+00:00", "type": "agent.init", "goal": "What did Smith et al. 2019, Johnson 2020, and Chen 2021 find about engagement-outcome correlations?", "history_len": 0}
+{"ts": "2026-04-05T08:36:54.628863+00:00", "type": "brain.tool_calls", "step": 1, "tools": "search_documents"}
+{"ts": "2026-04-05T08:36:54.630276+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 232}
+{"ts": "2026-04-05T08:36:54.637252+00:00", "type": "agent.init", "goal": "Summarize all the key points from my uploaded research documents", "history_len": 0}
+{"ts": "2026-04-05T08:36:54.637705+00:00", "type": "brain.tool_calls", "step": 1, "tools": "search_documents"}
+{"ts": "2026-04-05T08:36:54.638906+00:00", "type": "brain.final_answer", "step": 2, "answer_len": 1060}

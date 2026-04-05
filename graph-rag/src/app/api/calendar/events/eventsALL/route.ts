@@ -2,13 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-
-function verifyServiceToken(req: Request): boolean {
-  const token = req.headers.get('x-service-token');
-  const expected = process.env.SERVICE_TOKEN;
-  if (!expected || !token) return false;
-  return token === expected;
-}
+import { verifyServiceToken } from '@/lib/verifyServiceToken';
 
 export async function GET(req: Request) {
   // Accept EITHER service token (AI agent) OR NextAuth session (browser)
@@ -31,7 +25,7 @@ export async function GET(req: Request) {
   const startDate = new Date(start);
   const endDate = new Date(end);
 
-  // Determine user scope
+  // ALWAYS require a user scope — never return unscoped results
   let userId: string | undefined;
 
   if (hasServiceToken && userEmail) {
@@ -44,7 +38,15 @@ export async function GET(req: Request) {
     userId = session.user.id as string;
   }
 
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'user_email is required for service token requests' },
+      { status: 400 }
+    );
+  }
+
   const where: Record<string, unknown> = {
+    userId,
     deleted: false,
     start: { gte: startDate },
     OR: [
@@ -52,10 +54,6 @@ export async function GET(req: Request) {
       { end: null },
     ],
   };
-
-  if (userId) {
-    where.userId = userId;
-  }
 
   const events = await prisma.calendarEvent.findMany({
     where,

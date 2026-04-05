@@ -12,6 +12,13 @@ requests
 cohere
 httpx
 pdfminer.six
+langgraph
+langsmith
+redis
+langchain-text-splitters
+langchain-cohere
+tiktoken
+tenacity
 # Optional (uncomment if you later use these features)
 # pdfminer.six      # advanced PDF text extraction
 # pytesseract       # OCR

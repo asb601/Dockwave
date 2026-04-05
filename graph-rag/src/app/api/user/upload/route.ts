@@ -48,6 +48,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
   }
 
+  // --- File validation ---
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+  const ALLOWED_TYPES = new Set([
+    'application/pdf',
+    'text/plain',
+    'text/markdown',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    'application/msword', // .doc
+  ]);
+
+  if (file.size > MAX_FILE_SIZE) {
+    return NextResponse.json(
+      { error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024} MB.` },
+      { status: 413 }
+    );
+  }
+
+  if (!ALLOWED_TYPES.has(file.type)) {
+    return NextResponse.json(
+      { error: `Unsupported file type: ${file.type}. Accepted: PDF, TXT, Markdown, DOCX.` },
+      { status: 415 }
+    );
+  }
+
   let folder: null | { id: string; name: string } = null;
   if (folderId) {
     folder = await prisma.folder.findFirst({

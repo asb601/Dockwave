@@ -1,4 +1,4 @@
-# IntelliDoc — Architecture
+# Dcowave — Architecture
 
 ## 1. Application Architecture
 
