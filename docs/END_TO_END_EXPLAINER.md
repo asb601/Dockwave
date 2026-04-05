@@ -1,10 +1,10 @@
-# IntelliDoc — End-to-End Routes & Data Flows
+# Docwave — End-to-End Routes & Data Flows
 
 ---
 
 ## Architecture Overview
 
-IntelliDoc runs as two servers behind the browser:
+Docwave runs as two servers behind the browser:
 
 ```
 ┌──────────┐       ┌─────────────────────┐       ┌─────────────────────┐

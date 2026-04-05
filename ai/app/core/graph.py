@@ -27,7 +27,7 @@ from app.core.tool_registry import ToolRegistry
 from app.services.memory import append_message, get_history
 from app.util.log import log_brain_event, log_event, log_llm_cost
 
-logger = logging.getLogger("intellidoc.graph")
+logger = logging.getLogger("docwave.graph")
 
 # ── State ──────────────────────────────────────────────────────────────────
 
@@ -221,7 +221,7 @@ def _build_system_prompt() -> str:
     today = datetime.now(timezone.utc).date()
     tomorrow = today + timedelta(days=1)
     return (
-        "You are IntelliDoc — a knowledgeable, friendly AI mentor.\n"
+        "You are Docwave — a knowledgeable, friendly AI mentor.\n"
         "You can talk about anything: explain concepts, help with ideas, answer general knowledge "
         "questions, have casual conversations, give advice, brainstorm, and more.\n"
         "You also have access to powerful tools for the user's workspace: document search, "

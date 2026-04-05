@@ -1,4 +1,4 @@
-# IntelliDoc — AI Pipeline: Why It's a Beast
+# Docwave — AI Pipeline: Why It's a Beast
 
 ---
 
@@ -17,7 +17,7 @@ This fails in multiple ways:
 - **Hallucination**: The LLM fills gaps with plausible-sounding garbage
 - **No agency**: Can't do anything beyond answering — can't create notes, schedule meetings, or decide it needs more context
 
-IntelliDoc solves all of these. Here's how.
+Docwave solves all of these. Here's how.
 
 ---
 
@@ -68,9 +68,9 @@ pypdf handles standard PDFs. If it extracts suspiciously little text (tables, un
 
 ### Step 2: Semantic Chunking with Parent-Doc Strategy
 
-This is where IntelliDoc diverges from 95% of RAG systems. Most systems use fixed-size chunks (500 tokens, 50% overlap). That's lazy and loses context.
+This is where Docwave diverges from 95% of RAG systems. Most systems use fixed-size chunks (500 tokens, 50% overlap). That's lazy and loses context.
 
-**IntelliDoc does semantic chunking:**
+**Docwave does semantic chunking:**
 
 ```
 Raw text
@@ -438,7 +438,7 @@ Total pipeline: 3 LLM calls (brain step 1 + entity extraction + brain step 2) + 
 
 ## Why This Pipeline Beats Simple RAG
 
-| Problem | Simple RAG | IntelliDoc |
+| Problem | Simple RAG | Docwave |
 |---------|-----------|------------|
 | Top-5 chunks miss the answer | Stuck — returns bad answer | 4 search paths with 50+ candidates, double reranked |
 | Cross-document question | Impossible — searches each file independently | Entity graph bridges shared concepts across files |

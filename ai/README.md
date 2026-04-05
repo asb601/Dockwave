@@ -1,4 +1,4 @@
-# IntelliDoc AI Service
+# Docwave AI Service
 
 A FastAPI backend that powers intelligent document Q&A using **Multi-Agent Graph-RAG** — combining vector search, graph database queries, and LLM synthesis to answer questions grounded in your uploaded documents and calendar events.
 

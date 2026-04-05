@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 from app.core.tool_registry import ToolRegistry
 from app.util.log import log_event
 
-logger = logging.getLogger("intellidoc.actions")
+logger = logging.getLogger("docwave.actions")
 
 
 def _parse_llm_json(raw: str) -> Dict[str, Any]:

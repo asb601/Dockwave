@@ -40,11 +40,11 @@ _EVENTS_PATH = os.getenv("LOG_JSONL_PATH", str(Path(__file__).parent.parent.pare
 _BRAIN_PATH = str(Path(__file__).parent.parent.parent / "logs" / "brain_event.jsonl")
 _LLM_COST_PATH = str(Path(__file__).parent.parent.parent / "logs" / "llm_costs.jsonl")
 
-_event_logger = _make_jsonl_logger("intellidoc.sink.events", _EVENTS_PATH)
-_brain_logger = _make_jsonl_logger("intellidoc.sink.brain", _BRAIN_PATH)
-_cost_logger = _make_jsonl_logger("intellidoc.sink.llm_costs", _LLM_COST_PATH)
+_event_logger = _make_jsonl_logger("docwave.sink.events", _EVENTS_PATH)
+_brain_logger = _make_jsonl_logger("docwave.sink.brain", _BRAIN_PATH)
+_cost_logger = _make_jsonl_logger("docwave.sink.llm_costs", _LLM_COST_PATH)
 
-_app_logger = logging.getLogger("intellidoc.costs")
+_app_logger = logging.getLogger("docwave.costs")
 
 
 # ---------------------------------------------------------------------------

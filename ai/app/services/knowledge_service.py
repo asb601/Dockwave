@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 from app.services.graph import GraphClient
 
-logger = logging.getLogger("intellidoc.knowledge_service")
+logger = logging.getLogger("docwave.knowledge_service")
 
 
 class KnowledgeService:

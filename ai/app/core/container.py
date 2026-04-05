@@ -1,5 +1,5 @@
 """
-Dependency-injection container for the IntelliDoc AI service.
+Dependency-injection container for the Docwave AI service.
 
 The container wires up all tool dependencies from environment variables
 and exposes a singleton ToolRegistry.  Call :func:`get_registry` from
@@ -13,7 +13,7 @@ from typing import Optional
 
 from .tool_registry import ToolRegistry
 
-logger = logging.getLogger("intellidoc.container")
+logger = logging.getLogger("docwave.container")
 
 _registry: Optional[ToolRegistry] = None
 

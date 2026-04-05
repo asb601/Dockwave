@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, List, Optional
 
-logger = logging.getLogger("intellidoc.llm_config")
+logger = logging.getLogger("docwave.llm_config")
 
 try:
     import openai  # type: ignore

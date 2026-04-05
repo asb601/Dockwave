@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Tuple
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-logger = logging.getLogger("intellidoc.rerank")
+logger = logging.getLogger("docwave.rerank")
 
 
 def naive_rerank(chunks: List[Dict[str, Any]], query: str, top_k: int = 12) -> List[Dict[str, Any]]:

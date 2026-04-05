@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 from app.core.llm_config import build_llm_client
 from app.util.log import log_llm_cost
 
-logger = logging.getLogger("intellidoc.entity_extraction")
+logger = logging.getLogger("docwave.entity_extraction")
 
 # Tool schema for entity extraction — used via OpenAI tool calling
 _ENTITY_TOOL = {

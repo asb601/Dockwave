@@ -25,7 +25,7 @@ export async function sendAccessRequestEmail({
   await transporter.sendMail({
     from: process.env.EMAIL_FROM || process.env.EMAIL_SERVER_USER,
     to: adminEmail,
-    subject: `IntelliDoc AI Access Request — ${userName}`,
+    subject: `Docwave AI Access Request — ${userName}`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
         <h2 style="margin: 0 0 8px; font-size: 20px; color: #111;">New AI Access Request</h2>

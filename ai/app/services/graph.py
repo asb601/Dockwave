@@ -3,7 +3,7 @@ import os
 from typing import Any, Dict
 from neo4j import GraphDatabase
 
-logger = logging.getLogger("intellidoc.graph")
+logger = logging.getLogger("docwave.graph")
 
 
 class GraphClient:

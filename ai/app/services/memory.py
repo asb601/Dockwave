@@ -10,7 +10,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger("intellidoc.memory")
+logger = logging.getLogger("docwave.memory")
 
 _redis_client: Any = None
 _fallback: Dict[str, List[Dict[str, str]]] = {}  # in-memory when no Redis
@@ -40,8 +40,8 @@ def _get_redis():
 
 def _key(session_id: str, user_email: str = "") -> str:
     if user_email:
-        return f"intellidoc:chat:{user_email}:{session_id}"
-    return f"intellidoc:chat:{session_id}"
+        return f"docwave:chat:{user_email}:{session_id}"
+    return f"docwave:chat:{session_id}"
 
 
 def get_history(session_id: str, user_email: str = "") -> List[Dict[str, str]]:

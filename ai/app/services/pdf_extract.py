@@ -6,7 +6,7 @@ import re
 
 from pypdf import PdfReader
 
-logger = logging.getLogger("intellidoc.pdf")
+logger = logging.getLogger("docwave.pdf")
 
 # ---------------------------------------------------------------------------
 # pdfminer layout-aware extraction (preserves table spacing & columns)

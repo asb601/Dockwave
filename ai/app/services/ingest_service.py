@@ -29,7 +29,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.services.graph import GraphClient
 
-logger = logging.getLogger("intellidoc.ingest")
+logger = logging.getLogger("docwave.ingest")
 from app.services.pdf_extract import extract_text_from_pdf_bytes
 from app.services.entity_extraction import EntityExtractor
 

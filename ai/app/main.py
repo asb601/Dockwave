@@ -25,8 +25,8 @@ load_dotenv(
 # ---------------------------------------------------------------------------
 if os.getenv("LANGCHAIN_API_KEY"):
     os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
-    os.environ.setdefault("LANGCHAIN_PROJECT", "intellidoc")
-    logging.getLogger("intellidoc.startup").info(
+    os.environ.setdefault("LANGCHAIN_PROJECT", "docwave")
+    logging.getLogger("docwave.startup").info(
         "LangSmith tracing enabled (project=%s)", os.getenv("LANGCHAIN_PROJECT")
     )
 
@@ -39,7 +39,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%dT%H:%M:%S",
 )
 
-logger = logging.getLogger("intellidoc.startup")
+logger = logging.getLogger("docwave.startup")
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +111,7 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 # Application
 # ---------------------------------------------------------------------------
-app = FastAPI(title="IntelliDoc AI Service", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Docwave AI Service", version="1.0.0", lifespan=lifespan)
 
 # ---------------------------------------------------------------------------
 # Middleware pipeline (order matters – outermost wraps innermost)

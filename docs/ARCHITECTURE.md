@@ -1,4 +1,4 @@
-# IntelliDoc — System Architecture
+# Docwave — System Architecture
 
 ---
 
@@ -221,7 +221,7 @@ Each Chunk stores: `text`, `parentText` (larger parent chunk for context), `page
 
 ### Redis
 
-- **Chat memory**: Per-session conversation history, keyed by `intellidoc:chat:{email}:{sessionId}`, max 10 messages, 24hr TTL
+- **Chat memory**: Per-session conversation history, keyed by `docwave:chat:{email}:{sessionId}`, max 10 messages, 24hr TTL
 - **Rate limiting**: Sliding window counters per IP (ZSET-based), 30 requests per 60 seconds
 - **Fail-open**: If Redis is down, chat memory falls back to in-memory dict, rate limiter allows all requests
 

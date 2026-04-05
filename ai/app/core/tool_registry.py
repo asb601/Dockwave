@@ -1,5 +1,5 @@
 """
-ToolRegistry – pluggable tool registry for the IntelliDoc agent system.
+ToolRegistry – pluggable tool registry for the Docwave agent system.
 
 Tools are registered once at startup and looked up by name during agent
 execution. This decouples tool discovery from agent logic, making it easy

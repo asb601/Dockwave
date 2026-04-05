@@ -17,7 +17,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-logger = logging.getLogger("intellidoc.ratelimit")
+logger = logging.getLogger("docwave.ratelimit")
 
 _MAX_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "30"))
 _WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW", "60"))

@@ -14,7 +14,7 @@ from app.services.graph import GraphClient
 from app.util.auth import verify_service_token
 
 router = APIRouter()
-logger = logging.getLogger("intellidoc.delete")
+logger = logging.getLogger("docwave.delete")
 
 
 # ---------------------------------------------------------------------------

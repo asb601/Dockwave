@@ -14,7 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-logger = logging.getLogger("intellidoc.errors")
+logger = logging.getLogger("docwave.errors")
 
 
 class ErrorHandlerMiddleware(BaseHTTPMiddleware):

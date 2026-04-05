@@ -1,1 +1,1 @@
-"""Test suite for IntelliDoc AI service."""
+"""Test suite for Docwave AI service."""

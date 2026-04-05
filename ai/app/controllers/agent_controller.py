@@ -13,7 +13,7 @@ from app.core.graph import run_agent_graph, stream_agent_graph
 from app.util.auth import verify_service_token
 
 router = APIRouter()
-logger = logging.getLogger("intellidoc.agent")
+logger = logging.getLogger("docwave.agent")
 
 
 class RunAgentRequest(BaseModel):

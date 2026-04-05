@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import Header, HTTPException
 
-logger = logging.getLogger("intellidoc.auth")
+logger = logging.getLogger("docwave.auth")
 
 
 def verify_service_token(

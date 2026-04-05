@@ -20,7 +20,7 @@ from app.services.entity_extraction import EntityExtractor
 from app.util.log import estimate_cost, log_event, log_llm_cost
 from app.util.prompts import summarize_prompt
 
-logger = logging.getLogger("intellidoc.tools")
+logger = logging.getLogger("docwave.tools")
 
 
 @dataclass
